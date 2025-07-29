@@ -6,7 +6,6 @@ import { Municipio } from '../types/municipio.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, MapPin } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -28,7 +27,6 @@ const MunicipioPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMunicipio, setEditingMunicipio] = useState<Municipio | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<Municipio>[] = [
     {
       accessorKey: 'id',
@@ -78,7 +76,6 @@ const MunicipioPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
   const formFields = [
     {
       name: 'nombre' as keyof Municipio,
@@ -94,19 +91,16 @@ const MunicipioPage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de municipio
   const handleCreate = () => {
     setEditingMunicipio(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de municipio
   const handleEdit = (municipio: Municipio) => {
     setEditingMunicipio(municipio);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de municipio
   const handleDelete = async (id: number) => {
     const municipio = municipios.find(m => m.id === id);
     if (!municipio) return;
@@ -133,11 +127,10 @@ const MunicipioPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
+  
   const handleSubmit = async (data: Partial<Municipio>) => {
     try {
       if (editingMunicipio) {
-        // Actualizar municipio existente
         await updateMunicipio(editingMunicipio.id, data);
         addToast({
           title: 'Municipio actualizado',
@@ -145,7 +138,6 @@ const MunicipioPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nuevo municipio
         await createMunicipio(data);
         addToast({
           title: 'Municipio creado',
@@ -164,13 +156,11 @@ const MunicipioPage: React.FC = () => {
     }
   };
 
-  // Manejar cancelación del formulario
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingMunicipio(null);
   };
 
-  // Acciones de la tabla
   const actions = [
     {
       label: 'Editar',
@@ -203,7 +193,6 @@ const MunicipioPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -215,7 +204,6 @@ const MunicipioPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
       <DataTable
         data={municipios}
         columns={columns}
@@ -231,7 +219,6 @@ const MunicipioPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm
           fields={formFields}

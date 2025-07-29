@@ -35,7 +35,7 @@ interface DataTableProps<T> {
   showColumnSelector?: boolean;
   showCreateButton?: boolean;
   createButtonLabel?: string;
-  pageSize?: number; // Para paginación futura
+  pageSize?: number; 
   className?: string;
 }
 
@@ -66,7 +66,7 @@ export function DataTable<T extends { [key: string]: any }>({
   );
   const [showColumnSelectorPanel, setShowColumnSelectorPanel] = useState(false);
 
-  // Normalize data to ensure it's always an array
+  
   const normalizedData = useMemo(() => {
     if (Array.isArray(data)) {
       return data;
@@ -99,11 +99,10 @@ export function DataTable<T extends { [key: string]: any }>({
     });
   };
 
-  // Datos filtrados y ordenados
   const sortedAndFilteredData = useMemo(() => {
     let filteredData = normalizedData;
     
-    // Filtrar solo si showSearch está habilitado y hay término de búsqueda
+
     if (showSearch && searchTerm) {
       filteredData = normalizedData.filter((row) => {
         return columns.some((col) => {
@@ -139,7 +138,6 @@ export function DataTable<T extends { [key: string]: any }>({
     return filteredData;
   }, [normalizedData, columns, searchTerm, sortConfig, showSearch]);
 
-  // Columnas visibles filtradas
   const visibleColumnsList = columns.filter(col => 
     visibleColumns.has(col.accessorKey)
   );
@@ -173,7 +171,7 @@ export function DataTable<T extends { [key: string]: any }>({
         });
     }
     
-    // Fallback a las props originales para compatibilidad
+
     if (onEdit) {
       buttons.push(
         <Button

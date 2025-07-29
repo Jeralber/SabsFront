@@ -15,7 +15,6 @@ export const LoginPage = () => {
       style={{ backgroundImage: "url('/fondo.png')" }}
     >
       <div className="bg-white rounded-2xl shadow-xl flex flex-col lg:flex-row overflow-hidden w-full max-w-5xl">
-        {/* Lado izquierdo con imagen ilustrativa */}
         <div className="lg:w-1/2 w-full bg-white flex items-center justify-center p-8">
           <img
             src="/logo.png"

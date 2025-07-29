@@ -93,7 +93,6 @@ export const Dashboard = () => {
           </svg>
         </button>
         
-        {/* Indicadores */}
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
           {carouselImages.map((_, index) => (
             <button
@@ -109,7 +108,6 @@ export const Dashboard = () => {
         </div>
       </div>
       
-      {/* Cards con información real */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg transition-shadow">
           <div className="flex items-center">
@@ -156,7 +154,6 @@ export const Dashboard = () => {
           </div>
         </div>
         
-        {/* Card adicional con estadísticas de movimientos */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 mr-4">
@@ -172,7 +169,6 @@ export const Dashboard = () => {
           </div>
         </div>
         
-        {/* Card de solicitudes entregadas */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400 mr-4">
@@ -188,7 +184,6 @@ export const Dashboard = () => {
           </div>
         </div>
         
-        {/* Card de eficiencia */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 mr-4">

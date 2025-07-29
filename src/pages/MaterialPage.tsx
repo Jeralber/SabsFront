@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2,  ExternalLink, Package, Tag, Ruler } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Material } from '../types/material.types';
 
 import { useMaterial } from '../hooks/useMaterial';
 import { useTipoMaterial } from '../hooks/useTipoMaterial';
 import { useCategoriaMaterial } from '../hooks/useCategoriaMaterial';
+import { useUnidadMedida } from '../hooks/useUnidadMedida';
 import { DataTable } from '../components/molecules/DataTable';
 import { GenericForm, FieldDefinition } from '../components/molecules/GenericForm';
 
@@ -20,6 +22,7 @@ type Column<T> = {
 };
 
 const MaterialPage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     materiales,
     error,
@@ -28,13 +31,29 @@ const MaterialPage: React.FC = () => {
     deleteMaterial
   } = useMaterial();
   
-  const { tiposMaterial } = useTipoMaterial();
-  const { categoriasMaterial } = useCategoriaMaterial();
+  const { tiposMaterial, createTipoMaterial } = useTipoMaterial();
+  const { categoriasMaterial, createCategoriaMaterial } = useCategoriaMaterial();
+  const { unidadesMedida, createUnidadMedida } = useUnidadMedida();
   
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // Definir las columnas de la tabla
+  // Funciones de navegación
+  const handleNavigateToTipoMaterial = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    navigate('/tipos-material');
+  };
+
+  const handleNavigateToCategoriaMaterial = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    navigate('/categorias-material');
+  };
+
+  const handleNavigateToUnidadMedida = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    navigate('/unidades-medida');
+  };
+
   const columns: Column<Material>[] = [
     {
       accessorKey: 'id',
@@ -88,10 +107,16 @@ const MaterialPage: React.FC = () => {
           row.caduca
             ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
             : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-        }`}>
+          }`}>
           {row.caduca ? 'Sí' : 'No'}
         </span>
       )
+    },
+    {
+      accessorKey: 'unidadMedida',
+      header: 'Unidad de Medida',
+      sortable: false,
+      cell: (row: Material) => row.unidadMedida?.unidad || 'Sin unidad'
     },
     {
       accessorKey: 'fechaVencimiento',
@@ -132,7 +157,7 @@ const MaterialPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
+ 
   const formFields: FieldDefinition<Material>[] = [
     {
       name: 'nombre',
@@ -153,6 +178,43 @@ const MaterialPage: React.FC = () => {
       required: true
     },
     {
+      name: 'unidadMedidaId',
+      label: 'Unidad de Medida',
+      type: 'select',
+      required: false,
+      options: unidadesMedida.map(unidad => ({
+        value: unidad.id,
+        label: unidad.unidad
+      })),
+      allowQuickCreate: true,
+      quickCreateTitle: 'Crear Nueva Unidad de Medida',
+      quickCreateFields: [
+        {
+          name: 'unidad',
+          label: 'Unidad',
+          type: 'text',
+          required: true
+        },
+        {
+          name: 'activo',
+          label: 'Activo',
+          type: 'checkbox',
+          required: false
+        }
+      ],
+      onQuickCreate: async (data) => {
+        const response = await createUnidadMedida({ ...data, activo: data.activo ?? true });
+        const newUnidad = response.data;
+        if (!newUnidad || Array.isArray(newUnidad)) {
+          throw new Error('Error al crear la unidad de medida');
+        }
+        return {
+          id: newUnidad.id,
+          label: newUnidad.unidad
+        };
+      }
+    },
+    {
       name: 'tipoMaterialId',
       label: 'Tipo de Material',
       type: 'select',
@@ -160,7 +222,34 @@ const MaterialPage: React.FC = () => {
       options: tiposMaterial.map(tipo => ({
         value: tipo.id,
         label: tipo.tipo
-      }))
+      })),
+      allowQuickCreate: true,
+      quickCreateTitle: 'Crear Nuevo Tipo de Material',
+      quickCreateFields: [
+        {
+          name: 'tipo',
+          label: 'Tipo',
+          type: 'text',
+          required: true
+        },
+        {
+          name: 'activo',
+          label: 'Activo',
+          type: 'checkbox',
+          required: false
+        }
+      ],
+      onQuickCreate: async (data) => {
+        const response = await createTipoMaterial({ ...data, activo: data.activo ?? true });
+        const newTipo = response.data;
+        if (!newTipo || Array.isArray(newTipo)) {
+          throw new Error('Error al crear el tipo de material');
+        }
+        return {
+          id: newTipo.id,
+          label: newTipo.tipo
+        };
+      }
     },
     {
       name: 'categoriaMaterialId',
@@ -170,7 +259,34 @@ const MaterialPage: React.FC = () => {
       options: categoriasMaterial.map(categoria => ({
         value: categoria.id,
         label: categoria.categoria
-      }))
+      })),
+      allowQuickCreate: true,
+      quickCreateTitle: 'Crear Nueva Categoría de Material',
+      quickCreateFields: [
+        {
+          name: 'categoria',
+          label: 'Categoría',
+          type: 'text',
+          required: true
+        },
+        {
+          name: 'activo',
+          label: 'Activo',
+          type: 'checkbox',
+          required: false
+        }
+      ],
+      onQuickCreate: async (data) => {
+        const response = await createCategoriaMaterial({ ...data, activo: data.activo ?? true });
+        const newCategoria = response.data;
+        if (!newCategoria || Array.isArray(newCategoria)) {
+          throw new Error('Error al crear la categoría de material');
+        }
+        return {
+          id: newCategoria.id,
+          label: newCategoria.categoria
+        };
+      }
     },
     {
       name: 'caduca',
@@ -192,19 +308,19 @@ const MaterialPage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de material
+ 
   const handleCreate = () => {
     setEditingMaterial(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de material
+
   const handleEdit = (material: Material) => {
     setEditingMaterial(material);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de material
+ 
   const handleDelete = async (id: number) => {
     const material = materiales.find(m => m.id === id);
     if (!material) return;
@@ -231,11 +347,11 @@ const MaterialPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
+
   const handleSubmit = async (data: Partial<Material>) => {
     try {
       if (editingMaterial) {
-        // Actualizar material existente
+
         await updateMaterial(editingMaterial.id, data);
         addToast({
           title: 'Material actualizado',
@@ -243,7 +359,7 @@ const MaterialPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nuevo material
+
         await createMaterial(data);
         addToast({
           title: 'Material creado',
@@ -262,13 +378,12 @@ const MaterialPage: React.FC = () => {
     }
   };
 
-  // Manejar cancelación del formulario
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingMaterial(null);
   };
 
-  // Acciones de la tabla
+
   const actions = [
     {
       label: 'Editar',
@@ -301,7 +416,6 @@ const MaterialPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -313,7 +427,74 @@ const MaterialPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Tipos de Material</h3>
+              <p className="text-blue-100 mb-4">
+                Gestiona los tipos de material disponibles
+              </p>
+              <button
+                onClick={handleNavigateToTipoMaterial}
+                className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-200 font-medium"
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Gestionar Tipos
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </button>
+            </div>
+            <div className="hidden md:block">
+              <Package className="w-12 h-12 text-blue-200" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Categorías de Material</h3>
+              <p className="text-purple-100 mb-4">
+                Administra las categorías de materiales
+              </p>
+              <button
+                onClick={handleNavigateToCategoriaMaterial}
+                className="inline-flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors duration-200 font-medium"
+              >
+                <Tag className="w-4 h-4 mr-2" />
+                Gestionar Categorías
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </button>
+            </div>
+            <div className="hidden md:block">
+              <Tag className="w-12 h-12 text-purple-200" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Unidades de Medida</h3>
+              <p className="text-orange-100 mb-4">
+                Configura las unidades de medida
+              </p>
+              <button
+                onClick={handleNavigateToUnidadMedida}
+                className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-orange-50 transition-colors duration-200 font-medium"
+              >
+                <Ruler className="w-4 h-4 mr-2" />
+                Gestionar Unidades
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </button>
+            </div>
+            <div className="hidden md:block">
+              <Ruler className="w-12 h-12 text-orange-200" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <DataTable
         data={materiales}
         columns={columns}
@@ -329,7 +510,7 @@ const MaterialPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
+
       {isFormOpen && (
         <GenericForm<Material>
           fields={formFields}

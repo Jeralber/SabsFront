@@ -8,7 +8,7 @@ import { useMunicipio } from '../hooks/useMunicipio';
 import { Centro } from '../types/centro.types';
 
 
-// Definir el tipo Column localmente
+
 interface Column<T> {
   accessorKey: keyof T;
   header: string;
@@ -33,14 +33,13 @@ const CentroPage: React.FC = () => {
   const [editingCentro, setEditingCentro] = useState<Centro | null>(null);
   const [formData, setFormData] = useState<Partial<Centro>>({});
 
-  // Limpiar el formulario
+
   const resetForm = () => {
     setFormData({});
     setEditingCentro(null);
     setIsFormOpen(false);
   };
 
-  // Manejar creación
   const handleCreate = () => {
     setFormData({ activo: true });
     setEditingCentro(null);
@@ -197,7 +196,6 @@ const CentroPage: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -212,7 +210,6 @@ const CentroPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
       {loading ? (
         <div className="flex justify-center items-center p-8">
           <div className="text-gray-600 dark:text-gray-400">Cargando centros...</div>

@@ -6,7 +6,7 @@ import { Modulo } from '../types/modulo.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Database } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
+
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -65,13 +65,13 @@ const ModuloPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de módulo
+
   const handleEdit = (modulo: Modulo) => {
     setEditingModulo(modulo);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de módulo
+
   const handleDelete = async (id: number) => {
     const modulo = modulos.find(m => m.id === id);
     if (!modulo) return;
@@ -98,11 +98,10 @@ const ModuloPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
+
   const handleSubmit = async (data: Partial<Modulo>) => {
     try {
       if (editingModulo) {
-        // Actualizar módulo existente
         await updateModulo(editingModulo.id, data);
         addToast({
           title: 'Módulo actualizado',
@@ -110,7 +109,6 @@ const ModuloPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nuevo módulo
         await createModulo(data);
         addToast({
           title: 'Módulo creado',
@@ -129,13 +127,12 @@ const ModuloPage: React.FC = () => {
     }
   };
 
-  // Manejar cancelación del formulario
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingModulo(null);
   };
 
-  // Acciones de la tabla
+ 
   const actions = [
     {
       label: 'Editar',
@@ -165,10 +162,10 @@ const ModuloPage: React.FC = () => {
       </div>
     );
   }
-
+//
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -180,7 +177,7 @@ const ModuloPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
+
       <DataTable
         data={modulos}
         columns={columns}
@@ -196,7 +193,6 @@ const ModuloPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm
           fields={formFields}

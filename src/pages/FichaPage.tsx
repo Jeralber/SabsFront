@@ -20,7 +20,6 @@ export default function FichaPage() {
   const [editingFicha, setEditingFicha] = useState<Ficha | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Definición de campos para el formulario
   const formFields: FieldDefinition<Ficha>[] = [
     {
       name: "numero",
@@ -76,7 +75,6 @@ export default function FichaPage() {
     },
   ];
 
-  // Acciones personalizadas para la tabla
   const actions = [
     {
       label: "Editar",
@@ -89,11 +87,10 @@ export default function FichaPage() {
       icon: <Trash size={16} />,
       onClick: (row: Ficha) => handleDelete(row.id),
       variant: "danger" as const,
-      show: (row: Ficha) => row.activo, // Solo mostrar si está activo
+      show: (row: Ficha) => row.activo, 
     },
   ];
 
-  // Manejadores de eventos
   const handleCreate = () => {
     setEditingFicha(null);
     setIsEditing(false);
@@ -128,7 +125,6 @@ export default function FichaPage() {
   const handleFormSubmit = async (values: Partial<Ficha>) => {
     try {
       if (isEditing && editingFicha) {
-        // Actualizar ficha existente
         await updateFicha(editingFicha.id, values);
         addToast({
           title: "Ficha actualizada",
@@ -136,7 +132,6 @@ export default function FichaPage() {
           color: "success",
         });
       } else {
-        // Crear nueva ficha
         await createFicha({
           ...values,
           activo: values.activo ?? true,
@@ -166,7 +161,6 @@ export default function FichaPage() {
     setIsEditing(false);
   };
 
-  // Valores iniciales para el formulario
   const getInitialValues = (): Partial<Ficha> => {
     if (isEditing && editingFicha) {
       return {

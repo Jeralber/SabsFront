@@ -26,8 +26,7 @@ const SolicitudPage: React.FC = () => {
     updateSolicitud,
     deleteSolicitud,
     aprobarSolicitud,
-    entregarSolicitud,
-    devolverSolicitud
+
   } = useSolicitud();
 
   const { personas } = usePersona();
@@ -35,7 +34,6 @@ const SolicitudPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSolicitud, setEditingSolicitud] = useState<Solicitud | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<Solicitud>[] = [
     {
       accessorKey: 'id',
@@ -120,7 +118,6 @@ const SolicitudPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
   const formFields: FieldDefinition<Solicitud>[] = [
     {
       name: 'descripcion',
@@ -143,19 +140,18 @@ const SolicitudPage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de nueva solicitud
   const handleCreate = () => {
     setEditingSolicitud(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de solicitud
+
   const handleEdit = (solicitud: Solicitud) => {
     setEditingSolicitud(solicitud);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de solicitud
+
   const handleDelete = async (solicitud: Solicitud) => {
     try {
       await deleteSolicitud(solicitud.id);
@@ -173,11 +169,9 @@ const SolicitudPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
   const handleSubmit = async (data: Partial<Solicitud>) => {
     try {
       if (editingSolicitud) {
-        // Actualizar solicitud existente
         await updateSolicitud(editingSolicitud.id, data);
         addToast({
           title: 'Solicitud actualizada',
@@ -185,7 +179,6 @@ const SolicitudPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nueva solicitud
         await createSolicitud(data);
         addToast({
           title: 'Solicitud creada',
@@ -204,17 +197,14 @@ const SolicitudPage: React.FC = () => {
     }
   };
 
-  // Manejar la cancelación del formulario
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingSolicitud(null);
   };
 
-  // Manejar aprobación de solicitud
   const handleAprobar = async (solicitud: Solicitud) => {
     try {
-      // Aquí deberías obtener el ID del usuario actual del contexto de autenticación
-      const aprobadorId = 1; // Temporal - reemplazar con el ID del usuario actual
+      const aprobadorId = 1; 
       await aprobarSolicitud(solicitud.id, aprobadorId);
       addToast({
         title: 'Solicitud aprobada',
@@ -230,7 +220,7 @@ const SolicitudPage: React.FC = () => {
     }
   };
 
-  // Definir las acciones de la tabla
+
   const actions = [
     {
       icon: <Edit className="h-4 w-4" />,
@@ -270,12 +260,16 @@ const SolicitudPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <FileText className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Gestión de Solicitudes
-        </h1>
+     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Gestión de Solicitudes
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Administra las solicitudes de material del sistema
+          </p>
+        </div>
       </div>
 
       <DataTable
@@ -291,7 +285,6 @@ const SolicitudPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm
           fields={formFields}

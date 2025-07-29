@@ -14,10 +14,9 @@ export const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
+
     try {
       await login(email, password);
-      // Redirigir al usuario a la página principal después del login exitoso
       navigate("/");
     } catch (err) {
       console.error("Error al iniciar sesión:", err);
@@ -32,7 +31,7 @@ export const LoginForm = () => {
           {error}
         </div>
       )}
-      
+
       <Input
         label="Correo electrónico"
         value={email}

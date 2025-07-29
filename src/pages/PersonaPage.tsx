@@ -24,7 +24,7 @@ export default function PersonaPage() {
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Definición de campos para el formulario
+
   const formFields: FieldDefinition<Persona>[] = [
     {
       name: "identificacion",
@@ -59,7 +59,7 @@ export default function PersonaPage() {
       name: "contrasena",
       label: "Contraseña",
       type: "password",
-      required: !isEditing, // Solo requerida al crear
+      required: !isEditing, 
     },
     {
       name: "edad",
@@ -92,7 +92,6 @@ export default function PersonaPage() {
     },
   ];
 
-  // Definición de columnas para la tabla
   const columns = [
     {
       accessorKey: "identificacion" as keyof Persona,
@@ -156,7 +155,6 @@ export default function PersonaPage() {
     },
   ];
 
-  // Acciones personalizadas para la tabla
   const actions = [
     {
       label: "Editar",
@@ -169,11 +167,10 @@ export default function PersonaPage() {
       icon: <Trash size={16} />,
       onClick: (row: Persona) => handleDelete(row.id),
       variant: "danger" as const,
-      show: (row: Persona) => row.activo, // Solo mostrar si está activo
+      show: (row: Persona) => row.activo, 
     },
   ];
 
-  // Manejadores de eventos
   const handleCreate = () => {
     setEditingPersona(null);
     setIsEditing(false);
@@ -200,11 +197,9 @@ export default function PersonaPage() {
   const handleFormSubmit = async (values: Partial<Persona>) => {
     try {
       if (isEditing && editingPersona) {
-        // Actualizar persona existente
         await updatePersona(editingPersona.id, values);
         alert("Persona actualizada exitosamente");
       } else {
-        // Crear nueva persona
         await createPersona({
           ...values,
           activo: values.activo ?? true,
@@ -226,7 +221,6 @@ export default function PersonaPage() {
     setIsEditing(false);
   };
 
-  // Valores iniciales para el formulario
   const getInitialValues = (): Partial<Persona> => {
     if (isEditing && editingPersona) {
       return {
@@ -263,12 +257,16 @@ export default function PersonaPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <User className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Gestión de Personas
-        </h1>
+     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Gestión de Personas
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Administra los usuarios del sistema
+          </p>
+        </div>
       </div>
 
       <DataTable

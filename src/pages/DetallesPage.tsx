@@ -7,9 +7,8 @@ import { useSolicitud } from '../hooks/useSolicitud';
 import { usePersona } from '../hooks/usePersona';
 import { Detalles } from '../types/detalles.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2, List, Package } from 'lucide-react';
+import { Edit, Trash2,  Package } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -36,7 +35,6 @@ const DetallesPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState<Detalles | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<Detalles>[] = [
     {
       accessorKey: 'id',
@@ -121,7 +119,6 @@ const DetallesPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
   const formFields: FieldDefinition<Detalles>[] = [
     {
       name: 'materialId',
@@ -177,19 +174,16 @@ const DetallesPage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de nuevo detalle
   const handleCreate = () => {
     setEditingDetalle(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de detalle
   const handleEdit = (detalle: Detalles) => {
     setEditingDetalle(detalle);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de detalle
   const handleDelete = async (detalle: Detalles) => {
     try {
       await deleteDetalle(detalle.id);
@@ -207,11 +201,9 @@ const DetallesPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
   const handleSubmit = async (data: Partial<Detalles>) => {
     try {
       if (editingDetalle) {
-        // Actualizar detalle existente
         await updateDetalle(editingDetalle.id, data);
         addToast({
           title: 'Detalle actualizado',
@@ -219,7 +211,6 @@ const DetallesPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nuevo detalle
         await createDetalle(data);
         addToast({
           title: 'Detalle creado',
@@ -238,13 +229,11 @@ const DetallesPage: React.FC = () => {
     }
   };
 
-  // Manejar la cancelación del formulario
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingDetalle(null);
   };
 
-  // Definir las acciones de la tabla
   const actions = [
     {
       icon: <Edit className="h-4 w-4" />,
@@ -277,12 +266,16 @@ const DetallesPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <List className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Gestión de Detalles
-        </h1>
+ <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Gestión de Detalles
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Administra los detalles de las solicitudes de material del sistema
+          </p>
+        </div>
       </div>
 
       <DataTable
@@ -298,7 +291,6 @@ const DetallesPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm
           fields={formFields}

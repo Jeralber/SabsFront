@@ -5,12 +5,12 @@ import { useMovimiento } from '../hooks/useMovimiento';
 import { useTipoMovimiento } from '../hooks/useTipoMovimiento';
 import { usePersona } from '../hooks/usePersona';
 import { useMaterial } from '../hooks/useMaterial';
-//import { useSolicitud } from '../hooks/useSolicitud';
+
 import { Movimiento } from '../types/movimiento.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2, TrendingUp, ArrowUp, ArrowDown } from 'lucide-react';
+import { Edit, Trash2,  ArrowUp, ArrowDown } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
+
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -33,12 +33,9 @@ const MovimientoPage: React.FC = () => {
   const { tiposMovimiento } = useTipoMovimiento();
   const { personas } = usePersona();
   const { materiales } = useMaterial();
-// Removed unused solicitudes declaration since it's not being used anywhere in the component
-
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState<Movimiento | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<Movimiento>[] = [
     {
       accessorKey: 'id',
@@ -123,7 +120,6 @@ const MovimientoPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
   const formFields: FieldDefinition<Movimiento>[] = [
     {
       name: 'tipoMovimientoId',
@@ -167,19 +163,16 @@ const MovimientoPage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de nuevo movimiento
   const handleCreate = () => {
     setEditingMovimiento(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de movimiento
   const handleEdit = (movimiento: Movimiento) => {
     setEditingMovimiento(movimiento);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de movimiento
   const handleDelete = async (movimiento: Movimiento) => {
     try {
       await deleteMovimiento(movimiento.id);
@@ -197,7 +190,6 @@ const MovimientoPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
   const handleSubmit = async (data: Partial<Movimiento>) => {
     try {
       if (editingMovimiento) {
@@ -209,7 +201,6 @@ const MovimientoPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nuevo movimiento
         await createMovimiento(data);
         addToast({
           title: 'Movimiento creado',
@@ -228,13 +219,11 @@ const MovimientoPage: React.FC = () => {
     }
   };
 
-  // Manejar la cancelación del formulario
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingMovimiento(null);
   };
 
-  // Definir las acciones de la tabla
   const actions = [
     {
       icon: <Edit className="h-4 w-4" />,
@@ -267,12 +256,16 @@ const MovimientoPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <TrendingUp className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Gestión de Movimientos
-        </h1>
+   <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Gestión de Movimientos
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Administra los movimientos de los materiales del sistema
+          </p>
+        </div>
       </div>
 
       <DataTable
@@ -288,7 +281,6 @@ const MovimientoPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm
           fields={formFields}

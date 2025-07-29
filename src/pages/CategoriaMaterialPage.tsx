@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { DataTable } from '../components/molecules/DataTable';
-import { GenericForm } from '../components/molecules/GenericForm';
-import { useRol } from '../hooks/useRol';
-import { Rol } from '../types/rol.types';
+import { GenericForm, } from '../components/molecules/GenericForm';
+import { useCategoriaMaterial } from '../hooks/useCategoriaMaterial';
+import { CategoriaMaterial } from '../types/categoria-material.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2, Users } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 
 type Column<T> = {
@@ -16,33 +17,35 @@ type Column<T> = {
   width?: string;
 };
 
-const RolPage: React.FC = () => {
+const CategoriaMaterialPage: React.FC = () => {
   const {
-    roles,
+    categoriasMaterial,
     error,
-    createRol,
-    updateRol,
-    deleteRol
-  } = useRol();
+    createCategoriaMaterial,
+    updateCategoriaMaterial,
+    deleteCategoriaMaterial
+  } = useCategoriaMaterial();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingRol, setEditingRol] = useState<Rol | null>(null);
+  const [editingCategoriaMaterial, setEditingCategoriaMaterial] = useState<CategoriaMaterial | null>(null);
+  const navigate = useNavigate();
 
-  const columns: Column<Rol>[] = [
+
+  const columns: Column<CategoriaMaterial>[] = [
     {
       accessorKey: 'id',
       header: 'ID',
       sortable: true,
       width: '80px'
     },
-    {
-      accessorKey: 'nombre',
+    {   
+      accessorKey: 'nombre' as keyof CategoriaMaterial,
       header: 'Nombre',
       sortable: true,
-      cell: (row: Rol) => (
+      cell: (row: CategoriaMaterial) => (
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-purple-500" />
-          <span className="font-medium">{row.nombre}</span>
+          <div className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{row.categoria}</span>
         </div>
       )
     },
@@ -50,7 +53,7 @@ const RolPage: React.FC = () => {
       accessorKey: 'activo',
       header: 'Estado',
       sortable: true,
-      cell: (row: Rol) => (
+      cell: (row: CategoriaMaterial) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
           row.activo 
             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -65,66 +68,67 @@ const RolPage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: Rol) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: CategoriaMaterial) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: Rol) => 
+      cell: (row: CategoriaMaterial) => 
         row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
     }
   ];
 
+
   const formFields = [
     {
-      name: 'nombre' as keyof Rol,
-      label: 'Nombre del Rol',
+      name: 'nombre' as keyof CategoriaMaterial,
+      label: 'Nombre de la Categoría',
       type: 'text' as const,
       required: true
     },
     {
-      name: 'activo' as keyof Rol,
+      name: 'activo' as keyof CategoriaMaterial,
       label: 'Estado Activo',
       type: 'checkbox' as const,
       required: false
     }
   ];
 
-
+ 
   const handleCreate = () => {
-    setEditingRol(null);
+    setEditingCategoriaMaterial(null);
     setIsFormOpen(true);
   };
 
-
-  const handleEdit = (rol: Rol) => {
-    setEditingRol(rol);
+  
+  const handleEdit = (categoriaMaterial: CategoriaMaterial) => {
+    setEditingCategoriaMaterial(categoriaMaterial);
     setIsFormOpen(true);
   };
 
 
   const handleDelete = async (id: number) => {
-    const rol = roles.find(r => r.id === id);
-    if (!rol) return;
+    const categoriaMaterial = categoriasMaterial.find(c => c.id === id);
+    if (!categoriaMaterial) return;
 
     const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el rol "${rol.nombre}"?\n\nEsta acción no se puede deshacer.`
+      `¿Está seguro de que desea eliminar la categoría de material "${categoriaMaterial.categoria}"?\n\nEsta acción no se puede deshacer.`
     );
 
     if (confirmed) {
       try {
-        await deleteRol(id);
+        await deleteCategoriaMaterial(id);
         addToast({
-          title: 'Rol eliminado',
-          description: `El rol "${rol.nombre}" ha sido eliminado exitosamente.`,
+          title: 'Categoría de material eliminada',
+          description: `La categoría de material "${categoriaMaterial.categoria}" ha sido eliminada exitosamente.`,
           color: 'success'
         });
       } catch (error) {
         addToast({
           title: 'Error al eliminar',
-          description: error instanceof Error ? error.message : 'Error desconocido al eliminar el rol',
+          description: error instanceof Error ? error.message : 'Error desconocido al eliminar la categoría de material',
           color: 'danger'
         });
       }
@@ -132,38 +136,40 @@ const RolPage: React.FC = () => {
   };
 
 
-  const handleSubmit = async (data: Partial<Rol>) => {
+  const handleSubmit = async (data: Partial<CategoriaMaterial>) => {
     try {
-      if (editingRol) {
-        await updateRol(editingRol.id, data);
+      if (editingCategoriaMaterial) {
+        await updateCategoriaMaterial(editingCategoriaMaterial.id, data);
         addToast({
-          title: 'Rol actualizado',
-          description: `El rol "${data.nombre}" ha sido actualizado exitosamente.`,
+          title: 'Categoría de material actualizada',
+          description: `La categoría de material "${data.categoria}" ha sido actualizada exitosamente.`,
           color: 'success'
         });
       } else {
-        await createRol(data);
+        await createCategoriaMaterial(data);
         addToast({
-          title: 'Rol creado',
-          description: `El rol "${data.nombre}" ha sido creado exitosamente.`,
+          title: 'Categoría de material creada',
+          description: `La categoría de material "${data.categoria}" ha sido creada exitosamente.`,
           color: 'success'
         });
       }
       setIsFormOpen(false);
-      setEditingRol(null);
+      setEditingCategoriaMaterial(null);
     } catch (error) {
       addToast({
-        title: editingRol ? 'Error al actualizar' : 'Error al crear',
+        title: editingCategoriaMaterial ? 'Error al actualizar' : 'Error al crear',
         description: error instanceof Error ? error.message : 'Error desconocido',
         color: 'danger'
       });
     }
   };
 
+ 
   const handleCancel = () => {
     setIsFormOpen(false);
-    setEditingRol(null);
+    setEditingCategoriaMaterial(null);
   };
+
 
   const actions = [
     {
@@ -175,7 +181,7 @@ const RolPage: React.FC = () => {
     {
       label: 'Eliminar',
       icon: <Trash2 size={16} />,
-      onClick: (rol: Rol) => handleDelete(rol.id),
+      onClick: (categoriaMaterial: CategoriaMaterial) => handleDelete(categoriaMaterial.id),
       variant: 'danger' as const
     }
   ];
@@ -185,7 +191,7 @@ const RolPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">
-            Error al cargar los roles
+            Error al cargar las categorías de material
           </div>
           <div className="text-gray-600 dark:text-gray-400">
             {error}
@@ -197,38 +203,45 @@ const RolPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Gestión de Roles
+            Gestión de Categorías de Material
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Administra los roles de usuario del sistema
+            Administra las categorías de material del sistema
           </p>
         </div>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        >
+          Volver
+        </button>
       </div>
 
+
       <DataTable
-        data={roles}
+        data={categoriasMaterial}
         columns={columns}
-        title="Roles"
+        title="Categorías de Material"
         actions={actions}
         onEdit={handleEdit}
         onCreate={handleCreate}
         onDelete={handleDelete}
-        getRowId={(rol) => rol.id}
-        searchPlaceholder="Buscar roles..."
-        emptyMessage="No se encontraron roles"
-        createButtonLabel="Nuevo Rol"
+        getRowId={(categoriaMaterial) => categoriaMaterial.id}
+        searchPlaceholder="Buscar categorías de material..."
+        emptyMessage="No se encontraron categorías de material"
+        createButtonLabel="Nueva Categoría de Material"
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-
+  
       {isFormOpen && (
         <GenericForm
           fields={formFields}
-          initialValues={editingRol || { nombre: '', activo: true }}
+          initialValues={editingCategoriaMaterial || { categoria: '', activo: true }}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />
@@ -237,4 +250,4 @@ const RolPage: React.FC = () => {
   );
 };
 
-export default RolPage;
+export default CategoriaMaterialPage;

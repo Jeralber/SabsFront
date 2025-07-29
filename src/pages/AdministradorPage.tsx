@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardBody, CardHeader } from '@heroui/react';
 import { Settings, Shield, Users, Key, Link, Database } from 'lucide-react';
 
-// Importar las páginas individuales
+
 import ModuloPage from './ModuloPage';
 import OpcionPage from './OpcionPage';
 import RolPage from './RolPage';
@@ -71,7 +71,7 @@ const AdministradorPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -86,7 +86,7 @@ const AdministradorPage: React.FC = () => {
             onClick={() => setActiveSection(null)}
             className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
           >
-            Volver al Panel
+            Volver
           </button>
         )}
       </div>
@@ -125,7 +125,6 @@ const AdministradorPage: React.FC = () => {
         </div>
       )}
 
-      {/* Sección activa */}
       {activeSection && (
         <div className="mt-6">
           {renderActiveSection()}

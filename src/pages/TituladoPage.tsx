@@ -8,7 +8,6 @@ import { Titulado } from '@/types/titulado.types';
 import { Edit, Trash, GraduationCap } from 'lucide-react';
 import { addToast } from '@heroui/react';
 
-// Definir el tipo Column localmente
 interface Column<T> {
   accessorKey: keyof T;
   header: string;
@@ -32,7 +31,6 @@ const TituladoPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTitulado, setEditingTitulado] = useState<Titulado | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<Titulado>[] = [
     {
       accessorKey: 'id',
@@ -101,7 +99,6 @@ const TituladoPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
   const formFields: FieldDefinition<Titulado>[] = [
     {
       name: 'nombre',
@@ -137,7 +134,6 @@ const TituladoPage: React.FC = () => {
     }
   ];
 
-  // Funciones para manejar las operaciones CRUD
   const handleCreate = () => {
     setEditingTitulado(null);
     setIsFormOpen(true);
@@ -198,7 +194,6 @@ const TituladoPage: React.FC = () => {
     setEditingTitulado(null);
   };
 
-  // Definir las acciones de la tabla
   const actions = [
     {
       label: 'Editar',
@@ -214,7 +209,6 @@ const TituladoPage: React.FC = () => {
     }
   ];
 
-  // Mostrar error si hay problemas de carga
   if (error) {
     return (
       <div className="p-6">
@@ -227,8 +221,8 @@ const TituladoPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Encabezado */}
+    <div className="space-y-6">
+    
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Titulados</h1>
@@ -238,7 +232,6 @@ const TituladoPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
       <DataTable
         data={titulados}
         columns={columns}
@@ -255,7 +248,6 @@ const TituladoPage: React.FC = () => {
       />
 
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm
           fields={formFields}

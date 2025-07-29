@@ -7,7 +7,6 @@ import { Sede } from '../types/sede.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Building } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -31,7 +30,6 @@ const SedePage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSede, setEditingSede] = useState<Sede | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<Sede>[] = [
     {
       accessorKey: 'id',
@@ -99,7 +97,7 @@ const SedePage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
+
   const formFields: FieldDefinition<Sede>[] = [
     {
       name: 'nombre',
@@ -131,19 +129,19 @@ const SedePage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de sede
+
   const handleCreate = () => {
     setEditingSede(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de sede
+
   const handleEdit = (sede: Sede) => {
     setEditingSede(sede);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de sede
+
   const handleDelete = async (id: number) => {
     const sede = sedes.find(s => s.id === id);
     if (!sede) return;
@@ -170,7 +168,6 @@ const SedePage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
   const handleSubmit = async (data: Partial<Sede>) => {
     try {
       if (editingSede) {
@@ -182,7 +179,6 @@ const SedePage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nueva sede
         await createSede(data);
         addToast({
           title: 'Sede creada',
@@ -201,13 +197,12 @@ const SedePage: React.FC = () => {
     }
   };
 
-  // Manejar cancelación del formulario
+
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingSede(null);
   };
 
-  // Acciones de la tabla
   const actions = [
     {
       label: 'Editar',
@@ -240,7 +235,7 @@ const SedePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -252,7 +247,6 @@ const SedePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
       <DataTable
         data={sedes}
         columns={columns}
@@ -268,7 +262,6 @@ const SedePage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm<Sede>
           fields={formFields}

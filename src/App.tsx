@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@heroui/toast";
@@ -11,13 +10,17 @@ import SedePage from "./pages/SedePage";
 import TituladoPage from "./pages/TituladoPage";
 import PersonaPage from "@/pages/PersonaPage";
 import FichaPage from "./pages/FichaPage";
-import AreaPage from './pages/AreaPage';
+import AreaPage from "./pages/AreaPage";
 import AdministradorPage from "./pages/AdministradorPage";
-import MaterialPage from './pages/MaterialPage';
-import CentroPage from './pages/CentroPage';
-import { Layout } from "@/layout/layout"; 
-import "@/styles/globals.css"; 
+import MaterialPage from "./pages/MaterialPage";
+import CentroPage from "./pages/CentroPage";
+import { Layout } from "@/layout/layout";
+import "@/styles/globals.css";
+import TipoSitioPage from "./pages/TipoSitioPage";
 import GestionInventarioPage from "./pages/GestionInventarioPage";
+import TipoMaterialPage from "./pages/TipoMaterialPage";
+import CategoriaMaterialPage from "./pages/CategoriaMaterialPage";
+import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 
 const queryClient = new QueryClient();
 
@@ -29,8 +32,6 @@ function App() {
         <Routes>
           {/* Ruta pública */}
           <Route path="/login" element={<LoginPage />} />
-
-          {/* Rutas privadas */}
           <Route
             path="/"
             element={
@@ -51,8 +52,17 @@ function App() {
             <Route path="/titulados" element={<TituladoPage />} />
             <Route path="/sitios" element={<SitioPage />} />
             <Route path="/administracion" element={<AdministradorPage />} />
-            <Route path="/gestion-inventario" element={<GestionInventarioPage />} />
-
+            <Route
+              path="/gestion-inventario"
+              element={<GestionInventarioPage />}
+            />
+            <Route path="/tipositios" element={<TipoSitioPage />} />
+            <Route path="/tipos-material" element={<TipoMaterialPage />} />
+            <Route
+              path="/categorias-material"
+              element={<CategoriaMaterialPage />}
+            />
+            <Route path="/unidades-medida" element={<UnidadMedidaPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

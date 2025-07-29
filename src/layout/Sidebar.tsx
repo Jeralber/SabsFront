@@ -24,6 +24,7 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
   // Enlaces básicos para todos los usuarios
   const links = [
     { path: "/", label: "Inicio" },
+    { path: "/areas", label: "Área" },
     { path: "/materiales", label: "Materiales" },
     { path: "/personas", label: "Personas" },
     { path: "/municipios", label: "Municipios" },
@@ -50,7 +51,6 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
         Panel
       </div>
       <nav className="px-4 py-2 h-full overflow-y-auto">
-        {/* Debug: mostrar información del rol en el sidebar */}
        
         
         {navLinks.map((link) => (

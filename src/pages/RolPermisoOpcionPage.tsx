@@ -9,7 +9,6 @@ import { RolPermisoOpcion } from '../types/rol-permiso-opcion.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Shield } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -35,7 +34,6 @@ const RolPermisoOpcionPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRolPermisoOpcion, setEditingRolPermisoOpcion] = useState<RolPermisoOpcion | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<RolPermisoOpcion>[] = [
     {
       accessorKey: 'id',
@@ -78,7 +76,6 @@ const RolPermisoOpcionPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
   const formFields = [
     {
       name: 'rolId' as keyof RolPermisoOpcion,
@@ -112,19 +109,16 @@ const RolPermisoOpcionPage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de rol-permiso-opcion
   const handleCreate = () => {
     setEditingRolPermisoOpcion(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de rol-permiso-opcion
   const handleEdit = (rolPermisoOpcion: RolPermisoOpcion) => {
     setEditingRolPermisoOpcion(rolPermisoOpcion);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de rol-permiso-opcion
   const handleDelete = async (id: number) => {
     const rolPermisoOpcion = rolPermisosOpciones.find(rpo => rpo.id === id);
     if (!rolPermisoOpcion) return;
@@ -151,11 +145,9 @@ const RolPermisoOpcionPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
   const handleSubmit = async (data: Partial<RolPermisoOpcion>) => {
     try {
       if (editingRolPermisoOpcion) {
-        // Actualizar rol-permiso-opcion existente
         await updateRolPermisoOpcion(editingRolPermisoOpcion.id, data);
         addToast({
           title: 'Asignación actualizada',
@@ -163,7 +155,6 @@ const RolPermisoOpcionPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nueva rol-permiso-opcion
         await createRolPermisoOpcion(data);
         addToast({
           title: 'Asignación creada',
@@ -182,13 +173,11 @@ const RolPermisoOpcionPage: React.FC = () => {
     }
   };
 
-  // Manejar cancelación del formulario
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingRolPermisoOpcion(null);
   };
 
-  // Acciones de la tabla
   const actions = [
     {
       label: 'Editar',
@@ -221,7 +210,6 @@ const RolPermisoOpcionPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -233,7 +221,6 @@ const RolPermisoOpcionPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
       <DataTable
         data={rolPermisosOpciones}
         columns={columns}
@@ -249,7 +236,6 @@ const RolPermisoOpcionPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
       {isFormOpen && (
         <GenericForm
           fields={formFields}

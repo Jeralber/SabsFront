@@ -8,7 +8,7 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Agregar interceptor de solicitud para manejar tokens
+
 axiosInstance.interceptors.request.use(
   (config) => {
     const userData = localStorage.getItem("auth_user");
@@ -29,7 +29,7 @@ axiosInstance.interceptors.request.use(
 
 let isRedirecting = false;
 
-// Interceptor de respuesta para manejar errores de autenticación
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -44,7 +44,7 @@ axiosInstance.interceptors.response.use(
         window.location.href = "/login";
       }
       
-      // Aumentar el tiempo para evitar problemas con redirecciones múltiples
+
       setTimeout(() => {
         isRedirecting = false;
       }, 3000);

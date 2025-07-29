@@ -7,7 +7,6 @@ import { Opcion } from '../types/opcion.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Link } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -31,7 +30,6 @@ const OpcionPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOpcion, setEditingOpcion] = useState<Opcion | null>(null);
 
-  // Definir las columnas de la tabla
   const columns: Column<Opcion>[] = [
     {
       accessorKey: 'id',
@@ -82,7 +80,6 @@ const OpcionPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
   const formFields = [
     {
       name: 'nombre' as keyof Opcion,
@@ -114,19 +111,18 @@ const OpcionPage: React.FC = () => {
     }
   ];
 
-  // Manejar la creación de opción
+ 
   const handleCreate = () => {
     setEditingOpcion(null);
     setIsFormOpen(true);
   };
 
-  // Manejar la edición de opción
   const handleEdit = (opcion: Opcion) => {
     setEditingOpcion(opcion);
     setIsFormOpen(true);
   };
 
-  // Manejar la eliminación de opción
+ 
   const handleDelete = async (id: number) => {
     const opcion = opciones.find(o => o.id === id);
     if (!opcion) return;
@@ -153,11 +149,10 @@ const OpcionPage: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
+
   const handleSubmit = async (data: Partial<Opcion>) => {
     try {
       if (editingOpcion) {
-        // Actualizar opción existente
         await updateOpcion(editingOpcion.id, data);
         addToast({
           title: 'Opción actualizada',
@@ -165,7 +160,7 @@ const OpcionPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        // Crear nueva opción
+
         await createOpcion(data);
         addToast({
           title: 'Opción creada',
@@ -184,13 +179,13 @@ const OpcionPage: React.FC = () => {
     }
   };
 
-  // Manejar cancelación del formulario
+ 
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingOpcion(null);
   };
 
-  // Acciones de la tabla
+
   const actions = [
     {
       label: 'Editar',
@@ -235,7 +230,7 @@ const OpcionPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
+
       <DataTable
         data={opciones}
         columns={columns}
@@ -251,7 +246,7 @@ const OpcionPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
+    
       {isFormOpen && (
         <GenericForm
           fields={formFields}

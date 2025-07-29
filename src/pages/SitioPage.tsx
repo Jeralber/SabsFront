@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { DataTable } from '../components/molecules/DataTable';
-import { GenericForm, } from '../components/molecules/GenericForm';
+import { GenericForm, FieldDefinition } from '../components/molecules/GenericForm';
 import { useSitio } from '../hooks/useSitio';
 import { useTipoSitio } from '../hooks/useTipoSitio';
 import { Sitio } from '../types/sitio.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2,} from 'lucide-react';
+import { Edit, Trash2, Settings, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-// Importar el tipo Column del DataTable
+
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -18,6 +19,7 @@ type Column<T> = {
 };
 
 const SitioPage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     sitios,
     error,
@@ -26,12 +28,12 @@ const SitioPage: React.FC = () => {
     deleteSitio
   } = useSitio();
 
-  const { tiposSitio } = useTipoSitio();
+  const { tiposSitio, createTipoSitio } = useTipoSitio();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSitio, setEditingSitio] = useState<Sitio | null>(null);
 
-  // Definir las columnas de la tabla
+
   const columns: Column<Sitio>[] = [
     {
       accessorKey: 'id',
@@ -85,45 +87,70 @@ const SitioPage: React.FC = () => {
     }
   ];
 
-  // Definir los campos del formulario
-  const formFields = [
+
+  const formFields: FieldDefinition<Sitio>[] = [
     {
-      name: 'nombre' as keyof Sitio,
+      name: 'nombre',
       label: 'Nombre del Sitio',
-      type: 'text' as const,
+      type: 'text',
       required: true
     },
     {
-      name: 'tipoSitioId' as keyof Sitio,
+      name: 'tipoSitioId',
       label: 'Tipo de Sitio',
-      type: 'select' as const,
+      type: 'select',
       required: false,
       options: tiposSitio.map(tipo => ({
         label: tipo.nombre,
         value: tipo.id
-      }))
+      })),
+      allowQuickCreate: true,
+      quickCreateTitle: 'Crear Nuevo Tipo de Sitio',
+      quickCreateFields: [
+        {
+          name: 'nombre',
+          label: 'Nombre',
+          type: 'text',
+          required: true
+        },
+        {
+          name: 'activo',
+          label: 'Activo',
+          type: 'checkbox',
+          required: false
+        }
+      ],
+      onQuickCreate: async (data) => {
+        const response = await createTipoSitio({ ...data, activo: data.activo ?? true });
+        const newTipoSitio = response.data;
+        if (!newTipoSitio || Array.isArray(newTipoSitio)) {
+          throw new Error('Error al crear el tipo de sitio');
+        }
+        return {
+          id: newTipoSitio.id,
+          label: newTipoSitio.nombre
+        };
+      }
     },
     {
-      name: 'activo' as keyof Sitio,
+      name: 'activo',
       label: 'Estado Activo',
-      type: 'checkbox' as const,
+      type: 'checkbox',
       required: false
     }
   ];
 
-  // Función para crear un nuevo sitio
   const handleCreate = () => {
     setEditingSitio(null);
     setIsFormOpen(true);
   };
 
-  // Función para editar un sitio
   const handleEdit = (sitio: Sitio) => {
     setEditingSitio(sitio);
     setIsFormOpen(true);
   };
 
-  // Función para eliminar un sitio
+
   const handleDelete = async (id: number) => {
     const sitio = sitios.find(s => s.id === id);
     if (!sitio) return;
@@ -150,7 +177,7 @@ const SitioPage: React.FC = () => {
     }
   };
 
-  // Función para enviar el formulario
+
   const handleSubmit = async (data: Partial<Sitio>) => {
     try {
       if (editingSitio) {
@@ -179,13 +206,19 @@ const SitioPage: React.FC = () => {
     }
   };
 
-  // Función para cancelar el formulario
+
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingSitio(null);
   };
 
-  // Definir las acciones de la tabla
+
+  const handleNavigateToTipoSitio = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    navigate('/tipositios');
+  };
+
+
   const actions = [
     {
       label: 'Editar',
@@ -230,7 +263,30 @@ const SitioPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de datos */}
+
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Gestión de Tipos de Sitio</h3>
+            <p className="text-green-100 mb-4">
+              Administra los tipos de sitio disponibles en el sistema
+            </p>
+            <button
+              onClick={handleNavigateToTipoSitio}
+              className="inline-flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors duration-200 font-medium"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Gestionar Tipos de Sitio
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+          <div className="hidden md:block">
+            <Settings className="w-16 h-16 text-green-200" />
+          </div>
+        </div>
+      </div>
+
+
       <DataTable
         data={sitios}
         columns={columns}
@@ -246,7 +302,7 @@ const SitioPage: React.FC = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
 
-      {/* Formulario modal */}
+
       {isFormOpen && (
         <GenericForm
           fields={formFields}

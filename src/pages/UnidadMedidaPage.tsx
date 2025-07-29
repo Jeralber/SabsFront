@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { DataTable } from '../components/molecules/DataTable';
 import { GenericForm } from '../components/molecules/GenericForm';
-import { useRol } from '../hooks/useRol';
-import { Rol } from '../types/rol.types';
+import { useUnidadMedida } from '../hooks/useUnidadMedida';
+import { UnidadMedida } from '../types/unidad-medida.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2, Users } from 'lucide-react';
-
+import { Edit, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -16,19 +16,20 @@ type Column<T> = {
   width?: string;
 };
 
-const RolPage: React.FC = () => {
+const UnidadMedidaPage: React.FC = () => {
   const {
-    roles,
+    unidadesMedida,
     error,
-    createRol,
-    updateRol,
-    deleteRol
-  } = useRol();
+    createUnidadMedida,
+    updateUnidadMedida,
+    deleteUnidadMedida
+  } = useUnidadMedida();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingRol, setEditingRol] = useState<Rol | null>(null);
+  const [editingUnidadMedida, setEditingUnidadMedida] = useState<UnidadMedida | null>(null);
+  const navigate = useNavigate();
 
-  const columns: Column<Rol>[] = [
+  const columns: Column<UnidadMedida>[] = [
     {
       accessorKey: 'id',
       header: 'ID',
@@ -36,21 +37,31 @@ const RolPage: React.FC = () => {
       width: '80px'
     },
     {
-      accessorKey: 'nombre',
-      header: 'Nombre',
+      accessorKey: 'unidad' as keyof UnidadMedida,
+      header: 'Unidad',
       sortable: true,
-      cell: (row: Rol) => (
+      cell: (row: UnidadMedida) => (
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-purple-500" />
-          <span className="font-medium">{row.nombre}</span>
+          <div className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{row.unidad}</span>
         </div>
+      )
+    },
+    {
+      accessorKey: 'simbolo' as keyof UnidadMedida,
+      header: 'Símbolo',
+      sortable: true,
+      cell: (row: UnidadMedida) => (
+        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono">
+          {row.unidad}
+        </span>
       )
     },
     {
       accessorKey: 'activo',
       header: 'Estado',
       sortable: true,
-      cell: (row: Rol) => (
+      cell: (row: UnidadMedida) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
           row.activo 
             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -65,95 +76,97 @@ const RolPage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: Rol) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: UnidadMedida) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: Rol) => 
+      cell: (row: UnidadMedida) => 
         row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
     }
   ];
 
   const formFields = [
     {
-      name: 'nombre' as keyof Rol,
-      label: 'Nombre del Rol',
+      name: 'nombre' as keyof UnidadMedida,
+      label: 'Nombre de la Unidad',
       type: 'text' as const,
       required: true
     },
     {
-      name: 'activo' as keyof Rol,
+      name: 'simbolo' as keyof UnidadMedida,
+      label: 'Símbolo',
+      type: 'text' as const,
+      required: true
+    },
+    {
+      name: 'activo' as keyof UnidadMedida,
       label: 'Estado Activo',
       type: 'checkbox' as const,
       required: false
     }
   ];
 
-
   const handleCreate = () => {
-    setEditingRol(null);
+    setEditingUnidadMedida(null);
     setIsFormOpen(true);
   };
 
-
-  const handleEdit = (rol: Rol) => {
-    setEditingRol(rol);
+  const handleEdit = (unidadMedida: UnidadMedida) => {
+    setEditingUnidadMedida(unidadMedida);
     setIsFormOpen(true);
   };
-
 
   const handleDelete = async (id: number) => {
-    const rol = roles.find(r => r.id === id);
-    if (!rol) return;
+    const unidadMedida = unidadesMedida.find(u => u.id === id);
+    if (!unidadMedida) return;
 
     const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el rol "${rol.nombre}"?\n\nEsta acción no se puede deshacer.`
+      `¿Está seguro de que desea eliminar la unidad de medida "${unidadMedida.unidad}"?\n\nEsta acción no se puede deshacer.`
     );
 
     if (confirmed) {
       try {
-        await deleteRol(id);
+        await deleteUnidadMedida(id);
         addToast({
-          title: 'Rol eliminado',
-          description: `El rol "${rol.nombre}" ha sido eliminado exitosamente.`,
+          title: 'Unidad de medida eliminada',
+          description: `La unidad de medida "${unidadMedida.unidad}" ha sido eliminada exitosamente.`,
           color: 'success'
         });
       } catch (error) {
         addToast({
           title: 'Error al eliminar',
-          description: error instanceof Error ? error.message : 'Error desconocido al eliminar el rol',
+          description: error instanceof Error ? error.message : 'Error desconocido al eliminar la unidad de medida',
           color: 'danger'
         });
       }
     }
   };
 
-
-  const handleSubmit = async (data: Partial<Rol>) => {
+  const handleSubmit = async (data: Partial<UnidadMedida>) => {
     try {
-      if (editingRol) {
-        await updateRol(editingRol.id, data);
+      if (editingUnidadMedida) {
+        await updateUnidadMedida(editingUnidadMedida.id, data);
         addToast({
-          title: 'Rol actualizado',
-          description: `El rol "${data.nombre}" ha sido actualizado exitosamente.`,
+          title: 'Unidad de medida actualizada',
+          description: `La unidad de medida "${data.unidad}" ha sido actualizada exitosamente.`,
           color: 'success'
         });
       } else {
-        await createRol(data);
+        await createUnidadMedida(data);
         addToast({
-          title: 'Rol creado',
-          description: `El rol "${data.nombre}" ha sido creado exitosamente.`,
+          title: 'Unidad de medida creada',
+          description: `La unidad de medida "${data.unidad}" ha sido creada exitosamente.`,
           color: 'success'
         });
       }
       setIsFormOpen(false);
-      setEditingRol(null);
+      setEditingUnidadMedida(null);
     } catch (error) {
       addToast({
-        title: editingRol ? 'Error al actualizar' : 'Error al crear',
+        title: editingUnidadMedida ? 'Error al actualizar' : 'Error al crear',
         description: error instanceof Error ? error.message : 'Error desconocido',
         color: 'danger'
       });
@@ -162,7 +175,7 @@ const RolPage: React.FC = () => {
 
   const handleCancel = () => {
     setIsFormOpen(false);
-    setEditingRol(null);
+    setEditingUnidadMedida(null);
   };
 
   const actions = [
@@ -175,7 +188,7 @@ const RolPage: React.FC = () => {
     {
       label: 'Eliminar',
       icon: <Trash2 size={16} />,
-      onClick: (rol: Rol) => handleDelete(rol.id),
+      onClick: (unidadMedida: UnidadMedida) => handleDelete(unidadMedida.id),
       variant: 'danger' as const
     }
   ];
@@ -185,7 +198,7 @@ const RolPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">
-            Error al cargar los roles
+            Error al cargar las unidades de medida
           </div>
           <div className="text-gray-600 dark:text-gray-400">
             {error}
@@ -197,38 +210,42 @@ const RolPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Gestión de Roles
+            Gestión de Unidades de Medida
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Administra los roles de usuario del sistema
+            Administra las unidades de medida del sistema
           </p>
         </div>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        >
+          Volver
+        </button>
       </div>
 
       <DataTable
-        data={roles}
+        data={unidadesMedida}
         columns={columns}
-        title="Roles"
+        title="Unidades de Medida"
         actions={actions}
         onEdit={handleEdit}
         onCreate={handleCreate}
         onDelete={handleDelete}
-        getRowId={(rol) => rol.id}
-        searchPlaceholder="Buscar roles..."
-        emptyMessage="No se encontraron roles"
-        createButtonLabel="Nuevo Rol"
+        getRowId={(unidadMedida) => unidadMedida.id}
+        searchPlaceholder="Buscar unidades de medida..."
+        emptyMessage="No se encontraron unidades de medida"
+        createButtonLabel="Nueva Unidad de Medida"
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
-
 
       {isFormOpen && (
         <GenericForm
           fields={formFields}
-          initialValues={editingRol || { nombre: '', activo: true }}
+          initialValues={editingUnidadMedida || { unidad: '', activo: true }}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />
@@ -237,4 +254,4 @@ const RolPage: React.FC = () => {
   );
 };
 
-export default RolPage;
+export default UnidadMedidaPage;
