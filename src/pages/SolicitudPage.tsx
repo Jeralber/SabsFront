@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { DataTable } from '../components/molecules/DataTable';
 import { GenericForm, FieldDefinition } from '../components/molecules/GenericForm';
 import { useSolicitud } from '../hooks/useSolicitud';
-import { usePersona } from '../hooks/usePersona';
 import { Solicitud } from '../types/solicitud.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, FileText, CheckCircle, XCircle, Package, RotateCcw } from 'lucide-react';
 
-// Importar el tipo Column del DataTable
 type Column<T> = {
   accessorKey: keyof T;
   header: string;
@@ -29,7 +27,7 @@ const SolicitudPage: React.FC = () => {
 
   } = useSolicitud();
 
-  const { personas } = usePersona();
+  
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSolicitud, setEditingSolicitud] = useState<Solicitud | null>(null);
@@ -83,16 +81,6 @@ const SolicitudPage: React.FC = () => {
       }
     },
     {
-      accessorKey: 'solicitante',
-      header: 'Solicitante',
-      sortable: true,
-      cell: (row: Solicitud) => (
-        <span className="text-sm text-gray-600">
-          {row.solicitante?.nombre || 'Sin solicitante'} {row.solicitante?.apellido || ''}
-        </span>
-      )
-    },
-    {
       accessorKey: 'aprobador',
       header: 'Aprobador',
       sortable: true,
@@ -125,6 +113,7 @@ const SolicitudPage: React.FC = () => {
       type: 'text',
       required: true
     },
+    
     {
       name: 'estado',
       label: 'Estado',
@@ -137,7 +126,8 @@ const SolicitudPage: React.FC = () => {
         { value: 'ENTREGADA', label: 'Entregada' },
         { value: 'DEVUELTA', label: 'Devuelta' }
       ]
-    }
+    },
+    
   ];
 
   const handleCreate = () => {
@@ -219,7 +209,6 @@ const SolicitudPage: React.FC = () => {
       });
     }
   };
-
 
   const actions = [
     {

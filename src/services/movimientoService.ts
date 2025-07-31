@@ -1,13 +1,7 @@
 import axios from "@/lib/axios";
 import { Movimiento } from '../types/movimiento.types';
 
-
 const API_URL = '/movimientos';
-
-export interface MovimientoResponse {
-  message: string;
-  data: Movimiento | Movimiento[] | null;
-}
 
 export interface MovimientosPaginados {
   data: Movimiento[];
@@ -17,30 +11,53 @@ export interface MovimientosPaginados {
 }
 
 export const movimientoService = {
-  getAll: async (): Promise<MovimientoResponse> => {
-    const response = await axios.get<MovimientoResponse>(API_URL);
+  crear: async (data: Partial<Movimiento>): Promise<Movimiento> => {
+    const response = await axios.post<Movimiento>(API_URL, data);
     return response.data;
   },
 
-  getById: async (id: number): Promise<MovimientoResponse> => {
-    const response = await axios.get<MovimientoResponse>(`${API_URL}/${id}`);
+  obtenerTodos: async (): Promise<Movimiento[]> => {
+    const response = await axios.get<Movimiento[]>(API_URL);
+    return response.data;
+  },
+
+  obtenerPorId: async (id: number): Promise<Movimiento> => {
+    const response = await axios.get<Movimiento>(`${API_URL}/${id}`);
+    return response.data;
+  },
+
+  actualizar: async (id: number, data: Partial<Movimiento>): Promise<Movimiento> => {
+    const response = await axios.patch<Movimiento>(`${API_URL}/${id}`, data);
+    return response.data;
+  },
+
+  eliminar: async (id: number): Promise<{ message: string }> => {
+    const response = await axios.delete<{ message: string }>(`${API_URL}/${id}`);
     return response.data;
   },
 
 
 
-  create: async (movimiento: Partial<Movimiento>): Promise<MovimientoResponse> => {
-    const response = await axios.post<MovimientoResponse>(API_URL, movimiento);
+  crearDesdeSolicitud: async (params: {
+    materialId: number;
+    cantidad: number;
+    personaId: number;
+    tipoMovimientoNombre: string;
+    solicitudId?: number;
+  }): Promise<Movimiento> => {
+    const response = await axios.post<Movimiento>(`${API_URL}/desde-solicitud`, params);
     return response.data;
   },
-
-  update: async (id: number, movimiento: Partial<Movimiento>): Promise<MovimientoResponse> => {
-    const response = await axios.patch<MovimientoResponse>(`${API_URL}/${id}`, movimiento);
-    return response.data;
-  },
-
-  delete: async (id: number): Promise<MovimientoResponse> => {
-    const response = await axios.delete<MovimientoResponse>(`${API_URL}/${id}`);
+  
+  crearConSolicitud: async (data: Partial<Movimiento> & { solicitudId?: number }): Promise<{
+    message: string;
+    data: {
+      movimiento: Movimiento;
+      solicitud: any;
+      detalle: any;
+    };
+  }> => {
+    const response = await axios.post(`${API_URL}`, data);
     return response.data;
   }
 };

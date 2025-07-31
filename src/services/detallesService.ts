@@ -5,31 +5,56 @@ const API_URL = '/detalles';
 
 export interface DetallesResponse {
   message: string;
-  data: Detalles | Detalles[] | null;
+  data: Detalles | Detalles[];
+}
+
+export interface CreateDetallesDto {
+  cantidad: number;
+  materialId: number;
+  solicitudId: number;
 }
 
 export const detallesService = {
-  getAll: async (): Promise<DetallesResponse> => {
+  crear: async (data: CreateDetallesDto): Promise<DetallesResponse> => {
+    const response = await axios.post<DetallesResponse>(API_URL, data);
+    return response.data;
+  },
+
+  obtenerTodos: async (): Promise<DetallesResponse> => {
     const response = await axios.get<DetallesResponse>(API_URL);
     return response.data;
   },
 
-  getById: async (id: number): Promise<DetallesResponse> => {
+  obtenerPorId: async (id: number): Promise<DetallesResponse> => {
     const response = await axios.get<DetallesResponse>(`${API_URL}/${id}`);
     return response.data;
   },
 
-  create: async (detalle: Partial<Detalles>): Promise<DetallesResponse> => {
-    const response = await axios.post<DetallesResponse>(API_URL, detalle);
+  actualizar: async (id: number, data: Partial<CreateDetallesDto>): Promise<DetallesResponse> => {
+    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}`, data);
     return response.data;
   },
 
-  update: async (id: number, detalle: Partial<Detalles>): Promise<DetallesResponse> => {
-    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}`, detalle);
+  aprobar: async (id: number, personaApruebaId: number): Promise<DetallesResponse> => {
+    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/aprobar`, { personaApruebaId });
     return response.data;
   },
 
-  delete: async (id: number): Promise<DetallesResponse> => {
+  rechazar: async (id: number, personaApruebaId: number): Promise<DetallesResponse> => {
+    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/rechazar`, { personaApruebaId });
+    return response.data;
+  },
+
+  obtenerHistorialCompleto: async (): Promise<DetallesResponse> => {
+    const response = await axios.get<DetallesResponse>(`${API_URL}/historial`);
+    return response.data;
+  },
+
+  obtenerHistorialPorPersona: async (personaId: number): Promise<DetallesResponse> => {
+    const response = await axios.get<DetallesResponse>(`${API_URL}/historial/persona/${personaId}`);
+    return response.data;
+  },
+  eliminar: async (id: number): Promise<DetallesResponse> => {
     const response = await axios.delete<DetallesResponse>(`${API_URL}/${id}`);
     return response.data;
   }

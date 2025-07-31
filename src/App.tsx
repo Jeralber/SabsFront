@@ -23,6 +23,10 @@ import TipoMaterialPage from "./pages/TipoMaterialPage";
 import CategoriaMaterialPage from "./pages/CategoriaMaterialPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import AreaCentroPage from "./pages/AreaCentroPage";
+import AcercaDePage from "./pages/AcercaDePage";
+
+
+import HistorialDetallesPage from './pages/HistorialDetallesPage';
 
 const queryClient = new QueryClient();
 
@@ -32,7 +36,6 @@ function App() {
       <ToastProvider />
       <BrowserRouter>
         <Routes>
-          {/* Ruta pública */}
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/"
@@ -42,10 +45,17 @@ function App() {
               </PrivateRoute>
             }
           >
+            <Route path="/acerca-de" element={<AcercaDePage />} />
             <Route index element={
               <PrivateRoute>
                 <Dashboard />
               </PrivateRoute>
+            } />
+
+            <Route path="/historial-detalles" element={
+              <ProtectedRoute module="historialdetalles">
+                <HistorialDetallesPage />
+              </ProtectedRoute>
             } />
 
             <Route path="personas" element={
@@ -143,6 +153,10 @@ function App() {
                 <UnidadMedidaPage />
               </ProtectedRoute>
             } />
+            
+           
+            
+            
           </Route>
         </Routes>
       </BrowserRouter>

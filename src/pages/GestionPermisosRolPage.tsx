@@ -6,14 +6,13 @@ import { rolPermisoOpcionService } from '../services/rolPermisoOpcionService';
 import { addToast } from '@heroui/react';
 import { Shield, Save, RotateCcw } from 'lucide-react';
 
-// Tipo actualizado para incluir el campo 'asignado'
 interface PermisoDisponible {
   id: number;
   nombre: string;
   codigo: string;
   opcionId?: number;
   opcionNombre?: string;
-  asignado?: boolean; // Cambiar a opcional
+  asignado?: boolean; 
 }
 
 const GestionPermisosRolPage: React.FC = () => {
@@ -25,7 +24,6 @@ const GestionPermisosRolPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Definir las acciones estándar
   const accionesEstandar = ['ver', 'crear', 'editar', 'eliminar'];
 
   useEffect(() => {
@@ -40,16 +38,13 @@ const GestionPermisosRolPage: React.FC = () => {
   const cargarPermisosDisponibles = async (rolId: number) => {
     setLoading(true);
     try {
-      // Usar la nueva consulta del backend que incluye el campo 'asignado'
       const response = await rolPermisoOpcionService.findAllPermisosDisponibles(rolId);
       const permisos = Array.isArray(response.data) ? response.data : [];
       
       setPermisosDisponibles(permisos);
-      
-      // Inicializar permisos seleccionados basándose en el campo 'asignado'
       const seleccionados = new Set<string>();
       permisos.forEach(permiso => {
-        if (permiso.asignado === true) { // Verificación explícita
+        if (permiso.asignado === true) { 
           const key = permiso.opcionId ? 
             `${permiso.id}-${permiso.opcionId}` : 
             `${permiso.id}`;
@@ -141,7 +136,6 @@ const GestionPermisosRolPage: React.FC = () => {
           description: 'Permisos guardados correctamente',
           color: 'success'
         });
-        // Recargar permisos para reflejar los cambios
         await cargarPermisosDisponibles(selectedRolId);
       }
     } catch (error) {
@@ -162,7 +156,7 @@ const GestionPermisosRolPage: React.FC = () => {
     }
   };
 
-  // Calcular número de permisos asignados
+
   const permisosAsignadosCount = permisosDisponibles.filter(p => p.asignado).length;
 
   return (

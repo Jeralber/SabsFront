@@ -5,10 +5,11 @@ import { useMovimiento } from '../hooks/useMovimiento';
 import { useTipoMovimiento } from '../hooks/useTipoMovimiento';
 import { usePersona } from '../hooks/usePersona';
 import { useMaterial } from '../hooks/useMaterial';
+import { useSolicitud } from '../hooks/useSolicitud';
 
 import { Movimiento } from '../types/movimiento.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2,  ArrowUp, ArrowDown } from 'lucide-react';
+import { Edit, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 
 type Column<T> = {
@@ -25,7 +26,7 @@ const MovimientoPage: React.FC = () => {
     movimientos,
     loading,
     error,
-    createMovimiento,
+    createMovimientoConSolicitud, // Agregar esta línea
     updateMovimiento,
     deleteMovimiento
   } = useMovimiento();
@@ -33,8 +34,12 @@ const MovimientoPage: React.FC = () => {
   const { tiposMovimiento } = useTipoMovimiento();
   const { personas } = usePersona();
   const { materiales } = useMaterial();
+  const { solicitudes } = useSolicitud();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState<Movimiento | null>(null);
+
+  
+  const solicitudesPendientes = solicitudes.filter(solicitud => solicitud.estado === 'PENDIENTE');
 
   const columns: Column<Movimiento>[] = [
     {
@@ -147,6 +152,7 @@ const MovimientoPage: React.FC = () => {
       type: 'number',
       required: true
     },
+
     {
       name: 'personaId',
       label: 'Persona',
@@ -157,9 +163,13 @@ const MovimientoPage: React.FC = () => {
       }))
     },
     {
-      name: 'activo',
-      label: 'Activo',
-      type: 'checkbox'
+      name: 'solicitudId',
+      label: 'Solicitud Pendiente (Opcional)',
+      type: 'select',
+      options: solicitudesPendientes.map(solicitud => ({
+        value: solicitud.id,
+        label: `${solicitud.descripcion} - ${solicitud.solicitante?.nombre || 'Sin solicitante'}`
+      }))
     }
   ];
 
@@ -201,19 +211,27 @@ const MovimientoPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        await createMovimiento(data);
+        const response = await createMovimientoConSolicitud(data);
         addToast({
           title: 'Movimiento creado',
-          description: `El movimiento ha sido creado exitosamente.`,
+          description: `Movimiento, solicitud y detalle creados exitosamente.`,
           color: 'success'
         });
+        
+        if (response.data.detalle) {
+          addToast({
+            title: 'Detalle generado',
+            description: `Se ha creado automáticamente un detalle pendiente de aprobación.`,
+            color: 'primary'
+          });
+        }
       }
       setIsFormOpen(false);
       setEditingMovimiento(null);
     } catch (error) {
       addToast({
-        title: editingMovimiento ? 'Error al actualizar' : 'Error al crear',
-        description: error instanceof Error ? error.message : 'Error desconocido',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Error al procesar movimiento',
         color: 'danger'
       });
     }

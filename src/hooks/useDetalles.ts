@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Detalles } from '../types/detalles.types';
-import { detallesService } from '../services/detallesService';
+import { detallesService, CreateDetallesDto } from '../services/detallesService';
 
 interface UseDetallesState {
   detalles: Detalles[];
+  historial: any[]; // Agregar para el historial
   selectedDetalle: Detalles | null;
   loading: boolean;
   error: string | null;
@@ -12,6 +13,7 @@ interface UseDetallesState {
 export const useDetalles = () => {
   const [state, setState] = useState<UseDetallesState>({
     detalles: [],
+    historial: [], // Agregar
     selectedDetalle: null,
     loading: false,
     error: null
@@ -20,7 +22,7 @@ export const useDetalles = () => {
   const fetchDetalles = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.getAll();
+      const response = await detallesService.obtenerTodos();
       setState(prev => ({
         ...prev,
         detalles: Array.isArray(response.data) ? response.data : [],
@@ -38,7 +40,7 @@ export const useDetalles = () => {
   const fetchDetalleById = useCallback(async (id: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.getById(id);
+      const response = await detallesService.obtenerPorId(id);
       setState(prev => ({
         ...prev,
         selectedDetalle: response.data as Detalles,
@@ -53,10 +55,10 @@ export const useDetalles = () => {
     }
   }, []);
 
-  const createDetalle = useCallback(async (detalle: Partial<Detalles>) => {
+  const createDetalle = useCallback(async (detalle: CreateDetallesDto) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.create(detalle);
+      const response = await detallesService.crear(detalle);
       setState(prev => ({
         ...prev,
         detalles: [...prev.detalles, response.data as Detalles],
@@ -74,10 +76,10 @@ export const useDetalles = () => {
     }
   }, []);
 
-  const updateDetalle = useCallback(async (id: number, detalle: Partial<Detalles>) => {
+  const updateDetalle = useCallback(async (id: number, detalle: Partial<CreateDetallesDto>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.update(id, detalle);
+      const response = await detallesService.actualizar(id, detalle);
       const updatedDetalle = response.data as Detalles;
       setState(prev => ({
         ...prev,
@@ -100,7 +102,7 @@ export const useDetalles = () => {
   const deleteDetalle = useCallback(async (id: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      await detallesService.delete(id);
+      await detallesService.eliminar(id);
       setState(prev => ({
         ...prev,
         detalles: prev.detalles.filter(d => d.id !== id),
@@ -116,9 +118,77 @@ export const useDetalles = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchDetalles();
-  }, [fetchDetalles]);
+  const aprobarDetalle = useCallback(async (id: number, personaApruebaId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await detallesService.aprobar(id, personaApruebaId);
+      const updatedDetalle = response.data as Detalles;
+      setState(prev => ({
+        ...prev,
+        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
+        loading: false
+      }));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al aprobar detalle con ID ${id}`;
+      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+
+  const rechazarDetalle = useCallback(async (id: number, personaApruebaId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await detallesService.rechazar(id, personaApruebaId);
+      const updatedDetalle = response.data as Detalles;
+      setState(prev => ({
+        ...prev,
+        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
+        loading: false
+      }));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al rechazar detalle con ID ${id}`;
+      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+
+  const fetchHistorialCompleto = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await detallesService.obtenerHistorialCompleto();
+      setState(prev => ({
+        ...prev,
+        historial: Array.isArray(response.data) ? response.data : [],
+        loading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al cargar historial'
+      }));
+    }
+  }, []);
+
+  const fetchHistorialPorPersona = useCallback(async (personaId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await detallesService.obtenerHistorialPorPersona(personaId);
+      setState(prev => ({
+        ...prev,
+        historial: Array.isArray(response.data) ? response.data : [],
+        loading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : `Error al cargar historial de persona ${personaId}`
+      }));
+    }
+  }, []);
 
   return {
     ...state,
@@ -126,6 +196,10 @@ export const useDetalles = () => {
     fetchDetalleById,
     createDetalle,
     updateDetalle,
-    deleteDetalle
+    deleteDetalle,
+    aprobarDetalle,
+    rechazarDetalle,
+    fetchHistorialCompleto,
+    fetchHistorialPorPersona
   };
 };

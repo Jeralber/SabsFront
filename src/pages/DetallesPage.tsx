@@ -5,9 +5,11 @@ import { useDetalles } from '../hooks/useDetalles';
 import { useMaterial } from '../hooks/useMaterial';
 import { useSolicitud } from '../hooks/useSolicitud';
 import { usePersona } from '../hooks/usePersona';
+import { useAuth } from '../hooks/useAuth';
 import { Detalles } from '../types/detalles.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2,  Package } from 'lucide-react';
+import { Edit, Trash2, Package, Check, X, History, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -18,14 +20,131 @@ type Column<T> = {
   width?: string;
 };
 
+const columns: Column<Detalles>[] = [
+  {
+    accessorKey: 'id',
+    header: 'ID',
+    sortable: true,
+    width: '80px'
+  },
+  {
+    accessorKey: 'material',
+    header: 'Material',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <div className="flex items-center gap-2">
+        <Package className="h-4 w-4 text-blue-500" />
+        <span className="font-medium">{row.material?.nombre || 'Sin material'}</span>
+      </div>
+    )
+  },
+  {
+    accessorKey: 'cantidad',
+    header: 'Cantidad',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="font-semibold text-blue-600">
+        {row.cantidad}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'solicitud',
+    header: 'Solicitud',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="text-sm text-gray-600">
+        {row.solicitud?.descripcion || 'Sin solicitud'}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'solicitud',
+    header: 'Solicitante',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="text-sm text-gray-600">
+        {row.solicitud?.solicitante ? `${row.solicitud.solicitante.nombre} ${row.solicitud.solicitante.apellido || ''}` : 'Sin asignar'}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'personaAprueba',
+    header: 'Aprobador',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="text-sm text-gray-600">
+        {row.personaAprueba ? `${row.personaAprueba.nombre} ${row.personaAprueba.apellido || ''}` : 'Sin asignar'}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'estado',
+    header: 'Estado',
+    sortable: true,
+    cell: (row: Detalles) => {
+      const getEstadoBadge = (estado: string) => {
+        switch (estado) {
+          case 'PENDIENTE':
+            return (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full mr-1.5"></div>
+                Pendiente
+              </span>
+            );
+          case 'APROBADO':
+            return (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                <Check className="w-3 h-3 mr-1" />
+                Aprobado
+              </span>
+            );
+          case 'RECHAZADO':
+            return (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+                <X className="w-3 h-3 mr-1" />
+                Rechazado
+              </span>
+            );
+          default:
+            return (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">
+                {estado}
+              </span>
+            );
+        }
+      };
+      return getEstadoBadge(row.estado);
+    }
+  },
+  {
+    accessorKey: 'fechaCreacion',
+    header: 'Fecha Creación',
+    sortable: true,
+    isDate: true,
+    width: '150px'
+  },
+  {
+    accessorKey: 'fechaActualizacion',
+    header: 'Fecha Actualización',
+    sortable: true,
+    isDate: true,
+    width: '150px'
+  }
+];
+
 const DetallesPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     detalles,
     loading,
     error,
     createDetalle,
     updateDetalle,
-    deleteDetalle
+    deleteDetalle,
+    aprobarDetalle,
+    rechazarDetalle
   } = useDetalles();
 
   const { materiales } = useMaterial();
@@ -35,87 +154,142 @@ const DetallesPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState<Detalles | null>(null);
 
-  const columns: Column<Detalles>[] = [
+  const handleAprobar = async (detalle: Detalles) => {
+    if (!user?.usuario.id) {
+      addToast({
+        title: 'Error de autenticación',
+        description: 'No se pudo identificar al usuario. Por favor, inicie sesión nuevamente.',
+        color: 'danger'
+      });
+      return;
+    }
+
+    if (detalle.estado !== 'PENDIENTE') {
+      addToast({
+        title: 'Error de validación',
+        description: 'Solo se pueden aprobar detalles en estado PENDIENTE.',
+        color: 'warning'
+      });
+      return;
+    }
+
+    try {
+      console.log('=== INICIANDO APROBACIÓN DESDE FRONTEND ===');
+      console.log('Usuario que aprueba:', user.usuario.id, user.usuario.nombre);
+      console.log('Detalle a aprobar:', detalle.id, 'Estado actual:', detalle.estado);
+      
+      await aprobarDetalle(detalle.id, user.usuario.id);
+      
+      addToast({
+        title: 'Aprobación exitosa',
+        description: `Detalle #${detalle.id} aprobado correctamente. El movimiento ha sido ejecutado y el stock actualizado.`,
+        color: 'success'
+      });
+      
+      console.log('=== APROBACIÓN COMPLETADA DESDE FRONTEND ===');
+    } catch (error) {
+      console.error('Error en aprobación:', error);
+      addToast({
+        title: 'Error al aprobar',
+        description: error instanceof Error ? error.message : 'Error desconocido al aprobar el detalle',
+        color: 'danger'
+      });
+    }
+  };
+
+  const handleRechazar = async (detalle: Detalles) => {
+    if (!user?.usuario.id) {
+      addToast({
+        title: 'Error de autenticación',
+        description: 'No se pudo identificar al usuario. Por favor, inicie sesión nuevamente.',
+        color: 'danger'
+      });
+      return;
+    }
+
+    if (detalle.estado !== 'PENDIENTE') {
+      addToast({
+        title: 'Error de validación',
+        description: 'Solo se pueden rechazar detalles en estado PENDIENTE.',
+        color: 'warning'
+      });
+      return;
+    }
+
+    try {
+      console.log('=== INICIANDO RECHAZO DESDE FRONTEND ===');
+      console.log('Usuario que rechaza:', user.usuario.id, user.usuario.nombre);
+      console.log('Detalle a rechazar:', detalle.id, 'Estado actual:', detalle.estado);
+      
+      await rechazarDetalle(detalle.id, user.usuario.id);
+      
+      addToast({
+        title: 'Rechazo exitoso',
+        description: `Detalle #${detalle.id} rechazado correctamente.`,
+        color: 'success'
+      });
+      
+      console.log('=== RECHAZO COMPLETADO DESDE FRONTEND ===');
+    } catch (error) {
+      console.error('Error en rechazo:', error);
+      addToast({
+        title: 'Error al rechazar',
+        description: error instanceof Error ? error.message : 'Error desconocido al rechazar el detalle',
+        color: 'danger'
+      });
+    }
+  };
+
+  const handleEdit = (detalle: Detalles) => {
+    setEditingDetalle(detalle);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = async (detalle: Detalles) => {
+    try {
+      await deleteDetalle(detalle.id);
+      addToast({
+        title: 'Detalle eliminado',
+        description: `El detalle ha sido eliminado exitosamente.`,
+        color: 'success'
+      });
+    } catch (error) {
+      addToast({
+        title: 'Error al eliminar',
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        color: 'danger'
+      });
+    }
+  };
+
+  const actions = [
     {
-      accessorKey: 'id',
-      header: 'ID',
-      sortable: true,
-      width: '80px'
+      icon: <Check className="h-4 w-4" />,
+      label: 'Aprobar',
+      onClick: handleAprobar,
+      color: 'success' as const,
+      condition: (row: Detalles) => row.estado === 'PENDIENTE'
     },
     {
-      accessorKey: 'material',
-      header: 'Material',
-      sortable: true,
-      cell: (row: Detalles) => (
-        <div className="flex items-center gap-2">
-          <Package className="h-4 w-4 text-blue-500" />
-          <span className="font-medium">{row.material?.nombre || 'Sin material'}</span>
-        </div>
-      )
+      icon: <X className="h-4 w-4" />,
+      label: 'Rechazar',
+      onClick: handleRechazar,
+      color: 'warning' as const,
+      condition: (row: Detalles) => row.estado === 'PENDIENTE'
     },
     {
-      accessorKey: 'cantidad',
-      header: 'Cantidad',
-      sortable: true,
-      cell: (row: Detalles) => (
-        <span className="font-semibold text-blue-600">
-          {row.cantidad}
-        </span>
-      )
+      icon: <Edit className="h-4 w-4" />,
+      label: 'Editar',
+      onClick: handleEdit,
+      color: 'primary' as const,
+      condition: (row: Detalles) => row.estado === 'PENDIENTE'
     },
     {
-      accessorKey: 'solicitud',
-      header: 'Solicitud',
-      sortable: true,
-      cell: (row: Detalles) => (
-        <span className="text-sm text-gray-600">
-          {row.solicitud?.descripcion || 'Sin solicitud'}
-        </span>
-      )
-    },
-    {
-      accessorKey: 'personaSolicita',
-      header: 'Solicitante',
-      sortable: true,
-      cell: (row: Detalles) => (
-        <span className="text-sm text-gray-600">
-          {row.personaSolicita ? `${row.personaSolicita.nombre} ${row.personaSolicita.apellido || ''}` : 'Sin asignar'}
-        </span>
-      )
-    },
-    {
-      accessorKey: 'personaAprueba',
-      header: 'Aprobador',
-      sortable: true,
-      cell: (row: Detalles) => (
-        <span className="text-sm text-gray-600">
-          {row.personaAprueba ? `${row.personaAprueba.nombre} ${row.personaAprueba.apellido || ''}` : 'Sin asignar'}
-        </span>
-      )
-    },
-    {
-      accessorKey: 'personaEncargada',
-      header: 'Encargado',
-      sortable: true,
-      cell: (row: Detalles) => (
-        <span className="text-sm text-gray-600">
-          {row.personaEncargada ? `${row.personaEncargada.nombre} ${row.personaEncargada.apellido || ''}` : 'Sin asignar'}
-        </span>
-      )
-    },
-    {
-      accessorKey: 'fechaCreacion',
-      header: 'Fecha Creación',
-      sortable: true,
-      isDate: true,
-      width: '150px'
-    },
-    {
-      accessorKey: 'fechaActualizacion',
-      header: 'Fecha Actualización',
-      sortable: true,
-      isDate: true,
-      width: '150px'
+      icon: <Trash2 className="h-4 w-4" />,
+      label: 'Eliminar',
+      onClick: handleDelete,
+      color: 'danger' as const,
+      condition: (row: Detalles) => row.estado === 'PENDIENTE'
     }
   ];
 
@@ -146,26 +320,8 @@ const DetallesPage: React.FC = () => {
       }))
     },
     {
-      name: 'personaSolicitaId',
-      label: 'Persona que Solicita',
-      type: 'select',
-      options: personas.map(persona => ({
-        value: persona.id,
-        label: `${persona.nombre} ${persona.apellido || ''}`
-      }))
-    },
-    {
       name: 'personaApruebaId',
       label: 'Persona que Aprueba',
-      type: 'select',
-      options: personas.map(persona => ({
-        value: persona.id,
-        label: `${persona.nombre} ${persona.apellido || ''}`
-      }))
-    },
-    {
-      name: 'personaEncargadaId',
-      label: 'Persona Encargada',
       type: 'select',
       options: personas.map(persona => ({
         value: persona.id,
@@ -179,28 +335,6 @@ const DetallesPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (detalle: Detalles) => {
-    setEditingDetalle(detalle);
-    setIsFormOpen(true);
-  };
-
-  const handleDelete = async (detalle: Detalles) => {
-    try {
-      await deleteDetalle(detalle.id);
-      addToast({
-        title: 'Detalle eliminado',
-        description: `El detalle ha sido eliminado exitosamente.`,
-        color: 'success'
-      });
-    } catch (error) {
-      addToast({
-        title: 'Error al eliminar',
-        description: error instanceof Error ? error.message : 'Error desconocido',
-        color: 'danger'
-      });
-    }
-  };
-
   const handleSubmit = async (data: Partial<Detalles>) => {
     try {
       if (editingDetalle) {
@@ -211,7 +345,10 @@ const DetallesPage: React.FC = () => {
           color: 'success'
         });
       } else {
-        await createDetalle(data);
+        await createDetalle({
+          ...data,
+          cantidad: data.cantidad || 0
+        } as Detalles);
         addToast({
           title: 'Detalle creado',
           description: `El detalle ha sido creado exitosamente.`,
@@ -234,21 +371,6 @@ const DetallesPage: React.FC = () => {
     setEditingDetalle(null);
   };
 
-  const actions = [
-    {
-      icon: <Edit className="h-4 w-4" />,
-      label: 'Editar',
-      onClick: handleEdit,
-      color: 'primary' as const
-    },
-    {
-      icon: <Trash2 className="h-4 w-4" />,
-      label: 'Eliminar',
-      onClick: handleDelete,
-      color: 'danger' as const
-    }
-  ];
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -266,7 +388,7 @@ const DetallesPage: React.FC = () => {
   }
 
   return (
- <div className="space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -275,6 +397,28 @@ const DetallesPage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Administra los detalles de las solicitudes de material del sistema
           </p>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Historial de Detalles</h3>
+            <p className="text-blue-100 mb-4">
+              Consulta el historial completo de detalles procesados en el sistema
+            </p>
+            <button
+              onClick={() => navigate('/historial-detalles')}
+              className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-200 font-medium"
+            >
+              <History className="w-4 h-4 mr-2" />
+              Ver Historial Completo
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+          <div className="hidden md:block">
+            <History className="w-16 h-16 text-blue-200" />
+          </div>
         </div>
       </div>
 
@@ -304,3 +448,109 @@ const DetallesPage: React.FC = () => {
 };
 
 export default DetallesPage;
+
+
+const tableColumns: Column<Detalles>[] = [
+  {
+    accessorKey: 'id',
+    header: 'ID',
+    sortable: true,
+    width: '80px'
+  },
+  {
+    accessorKey: 'material',
+    header: 'Material',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <div className="flex items-center gap-2">
+        <Package className="h-4 w-4 text-blue-500" />
+        <span className="font-medium">{row.material?.nombre || 'Sin material'}</span>
+      </div>
+    )
+  },
+  {
+    accessorKey: 'cantidad',
+    header: 'Cantidad',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="font-semibold text-blue-600">
+        {row.cantidad}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'solicitud',
+    header: 'Solicitud',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="text-sm text-gray-600">
+        {row.solicitud?.descripcion || 'Sin solicitud'}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'solicitud',
+    header: 'Solicitante',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="text-sm text-gray-600">
+        {row.solicitud?.solicitante ? `${row.solicitud.solicitante.nombre} ${row.solicitud.solicitante.apellido || ''}` : 'Sin asignar'}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'personaAprueba',
+    header: 'Aprobador',
+    sortable: true,
+    cell: (row: Detalles) => (
+      <span className="text-sm text-gray-600">
+        {row.personaAprueba ? `${row.personaAprueba.nombre} ${row.personaAprueba.apellido || ''}` : 'Sin asignar'}
+      </span>
+    )
+  },
+  
+  {
+    accessorKey: 'fechaCreacion',
+    header: 'Fecha Creación',
+    sortable: true,
+    isDate: true,
+    width: '150px'
+  },
+  {
+    accessorKey: 'fechaActualizacion',
+    header: 'Fecha Actualización',
+    sortable: true,
+    isDate: true,
+    width: '150px'
+  },
+  {
+    accessorKey: 'estado',
+    header: 'Estado',
+    sortable: true,
+    cell: (row: Detalles) => {
+      const getEstadoColor = (estado: string) => {
+        switch (estado) {
+          case 'APROBADO': return 'bg-green-100 text-green-800 border-green-200';
+          case 'RECHAZADO': return 'bg-red-100 text-red-800 border-red-200';
+          case 'PENDIENTE': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+          case 'ENTREGADO': return 'bg-blue-100 text-blue-800 border-blue-200';
+          case 'DEVUELTO': return 'bg-purple-100 text-purple-800 border-purple-200';
+          default: return 'bg-gray-100 text-gray-800 border-gray-200';
+        }
+      };
+      
+      return (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(row.estado)}`}>
+          {row.estado}
+        </span>
+      );
+    }
+  },
+  {
+    accessorKey: 'fechaActualizacion',
+    header: 'Fecha Actualización',
+    sortable: true,
+    isDate: true,
+    width: '150px'
+  }
+];

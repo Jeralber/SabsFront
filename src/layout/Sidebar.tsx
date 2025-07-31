@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { FaChevronDown, FaChevronRight, FaUserCog, FaChartBar, FaTable, FaHome, FaExchangeAlt, FaUsers, FaBuilding, FaMapMarkerAlt, FaGraduationCap, FaCity, FaBox } from 'react-icons/fa';
 
+
 interface SidebarProps {
   isOpen: boolean;
   toggleSidebar: () => void;
@@ -118,7 +119,7 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
       icon: <FaChartBar className="w-5 h-5" />,
       path: '/reportes',
       module: 'reportes'
-    }
+    },
   ];
 
   const toggleMenu = (menuName: string) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Movimiento } from '../types/movimiento.types';
+import { Movimiento,  } from '../types/movimiento.types';
 import { movimientoService, MovimientosPaginados } from '../services/movimientoService';
 
 
@@ -23,10 +23,10 @@ export const useMovimiento = () => {
   const fetchMovimientos = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await movimientoService.getAll();
+      const response = await movimientoService.obtenerTodos();
       setState(prev => ({
         ...prev,
-        movimientos: Array.isArray(response.data) ? response.data : [],
+        movimientos: Array.isArray(response) ? response : [],
         loading: false
       }));
     } catch (error) {
@@ -38,15 +38,13 @@ export const useMovimiento = () => {
     }
   }, []);
 
-
-
   const fetchMovimientoById = useCallback(async (id: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await movimientoService.getById(id);
+      const response = await movimientoService.obtenerPorId(id);
       setState(prev => ({
         ...prev,
-        selectedMovimiento: response.data as Movimiento,
+        selectedMovimiento: response as Movimiento,
         loading: false
       }));
     } catch (error) {
@@ -61,10 +59,10 @@ export const useMovimiento = () => {
   const createMovimiento = useCallback(async (movimiento: Partial<Movimiento>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await movimientoService.create(movimiento);
+      const response = await movimientoService.crear(movimiento);
       setState(prev => ({
         ...prev,
-        movimientos: [...prev.movimientos, response.data as Movimiento],
+        movimientos: [...prev.movimientos, response as Movimiento],
         loading: false
       }));
       return response;
@@ -79,11 +77,32 @@ export const useMovimiento = () => {
     }
   }, []);
 
+  const createMovimientoConSolicitud = useCallback(async (movimiento: Partial<Movimiento> & { solicitudId?: number }) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await movimientoService.crearConSolicitud(movimiento);
+      setState(prev => ({
+        ...prev,
+        movimientos: [...prev.movimientos, response.data.movimiento],
+        loading: false
+      }));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear movimiento con solicitud';
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+
   const updateMovimiento = useCallback(async (id: number, movimiento: Partial<Movimiento>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await movimientoService.update(id, movimiento);
-      const updatedMovimiento = response.data as Movimiento;
+      const response = await movimientoService.actualizar(id, movimiento);
+      const updatedMovimiento = response as Movimiento;
       setState(prev => ({
         ...prev,
         movimientos: prev.movimientos.map(m => m.id === id ? updatedMovimiento : m),
@@ -105,7 +124,7 @@ export const useMovimiento = () => {
   const deleteMovimiento = useCallback(async (id: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      await movimientoService.delete(id);
+      await movimientoService.eliminar(id);
       setState(prev => ({
         ...prev,
         movimientos: prev.movimientos.filter(m => m.id !== id),
@@ -131,6 +150,7 @@ export const useMovimiento = () => {
    // filtrarMovimientos,
     fetchMovimientoById,
     createMovimiento,
+    createMovimientoConSolicitud, // Agregar este método
     updateMovimiento,
     deleteMovimiento
   };

@@ -1,7 +1,8 @@
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
-import { Bars3Icon, BellIcon, ChevronDownIcon, CogIcon, ArrowRightOnRectangleIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, BellIcon, ChevronDownIcon,  ArrowRightOnRectangleIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface NavbarProps {
   toggleSidebar: () => void;
@@ -9,6 +10,7 @@ interface NavbarProps {
 
 export const Navbar = ({ toggleSidebar }: NavbarProps) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -59,15 +61,7 @@ export const Navbar = ({ toggleSidebar }: NavbarProps) => {
                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                 onClick={() => {
                   setIsMenuOpen(false);
-                }}
-              >
-                <CogIcon className="h-4 w-4" />
-                Configuración
-              </button>
-              <button
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                onClick={() => {
-                  setIsMenuOpen(false);
+                  navigate('/acerca-de');
                 }}
               >
                 <InformationCircleIcon className="h-4 w-4" />

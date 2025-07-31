@@ -1,5 +1,5 @@
 import axios from "@/lib/axios";
-import { Persona } from '../types/persona.types';
+import { Persona,  PersonaCompletaResponse } from '../types/persona.types';
 
 const API_URL = '/personas';
 
@@ -26,6 +26,16 @@ export const personaService = {
     } catch (error) {
       return null;
     }
+  },
+
+  getAllCompleta: async (): Promise<PersonaCompletaResponse> => {
+    const response = await axios.get<PersonaCompletaResponse>(`${API_URL}/completa`);
+    return response.data;
+  },
+
+  getCompletaById: async (id: number): Promise<PersonaCompletaResponse> => {
+    const response = await axios.get<PersonaCompletaResponse>(`${API_URL}/completa/${id}`);
+    return response.data;
   },
 
   create: async (persona: Partial<Persona>): Promise<PersonaResponse> => {

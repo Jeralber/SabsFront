@@ -1,22 +1,21 @@
 import { Material } from './material.types';
 import { Solicitud } from './solicitud.types';
 import { Persona } from './persona.types';
+import { Movimiento } from './movimiento.types';
 
 export interface Detalles {
   id: number;
   cantidad: number;
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'ENTREGADO' | 'DEVUELTO';
   materialId: number;
-  solicitudId?: number;
-  personaSolicitaId?: number;
+  solicitudId: number;
   personaApruebaId?: number;
-  personaEncargadaId?: number;
   fechaCreacion: Date;
   fechaActualizacion: Date;
   
   // Relaciones
   material: Material;
-  solicitud?: Solicitud;
-  personaSolicita?: Persona;
+  solicitud: Solicitud;
   personaAprueba?: Persona;
-  personaEncargada?: Persona;
+  movimiento?: Movimiento;
 }

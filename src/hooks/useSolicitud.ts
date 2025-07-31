@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Solicitud } from '../types/solicitud.types';
-import { solicitudService } from '../services/solicitudService';
+import { solicitudService, MovimientoSolicitud, ResumenSolicitud } from '../services/solicitudService';
 
 interface UseSolicitudState {
   solicitudes: Solicitud[];
   selectedSolicitud: Solicitud | null;
-  movimientos: any[] | null;
+  movimientos: MovimientoSolicitud[];
+  resumen: ResumenSolicitud | null;
   loading: boolean;
   error: string | null;
 }
@@ -19,7 +20,8 @@ export const useSolicitud = () => {
   const [state, setState] = useState<UseSolicitudState>({
     solicitudes: [],
     selectedSolicitud: null,
-    movimientos: null,
+    movimientos: [],
+    resumen: null,
     loading: false,
     error: null
   });
@@ -27,10 +29,10 @@ export const useSolicitud = () => {
   const fetchSolicitudes = useCallback(async (filters?: SolicitudFilters) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await solicitudService.getAll(filters);
+      const data = await solicitudService.obtenerTodas(filters);
       setState(prev => ({
         ...prev,
-        solicitudes: Array.isArray(response.data) ? response.data : [],
+        solicitudes: data,
         loading: false
       }));
     } catch (error) {
@@ -45,10 +47,10 @@ export const useSolicitud = () => {
   const fetchSolicitudById = useCallback(async (id: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await solicitudService.getById(id);
+      const data = await solicitudService.obtenerPorId(id);
       setState(prev => ({
         ...prev,
-        selectedSolicitud: response.data as Solicitud,
+        selectedSolicitud: data,
         loading: false
       }));
     } catch (error) {
@@ -63,13 +65,13 @@ export const useSolicitud = () => {
   const createSolicitud = useCallback(async (solicitud: Partial<Solicitud>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await solicitudService.create(solicitud);
+      const data = await solicitudService.crear(solicitud);
       setState(prev => ({
         ...prev,
-        solicitudes: [...prev.solicitudes, response.data as Solicitud],
+        solicitudes: [...prev.solicitudes, data],
         loading: false
       }));
-      return response;
+      return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al crear solicitud';
       setState(prev => ({
@@ -81,60 +83,17 @@ export const useSolicitud = () => {
     }
   }, []);
 
-  const updateSolicitud = useCallback(async (id: number, solicitud: Partial<Solicitud>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await solicitudService.update(id, solicitud);
-      const updatedSolicitud = response.data as Solicitud;
-      setState(prev => ({
-        ...prev,
-        solicitudes: prev.solicitudes.map(s => s.id === id ? updatedSolicitud : s),
-        selectedSolicitud: prev.selectedSolicitud?.id === id ? updatedSolicitud : prev.selectedSolicitud,
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al actualizar solicitud con ID ${id}`;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const deleteSolicitud = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      await solicitudService.delete(id);
-      setState(prev => ({
-        ...prev,
-        solicitudes: prev.solicitudes.filter(s => s.id !== id),
-        selectedSolicitud: prev.selectedSolicitud?.id === id ? null : prev.selectedSolicitud,
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : `Error al eliminar solicitud con ID ${id}`
-      }));
-    }
-  }, []);
-
   const aprobarSolicitud = useCallback(async (id: number, aprobadorId: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await solicitudService.aprobar(id, aprobadorId);
-      const updatedSolicitud = response.data as Solicitud;
+      const data = await solicitudService.aprobar(id, aprobadorId);
       setState(prev => ({
         ...prev,
-        solicitudes: prev.solicitudes.map(s => s.id === id ? updatedSolicitud : s),
-        selectedSolicitud: prev.selectedSolicitud?.id === id ? updatedSolicitud : prev.selectedSolicitud,
+        solicitudes: prev.solicitudes.map(s => s.id === id ? data : s),
+        selectedSolicitud: prev.selectedSolicitud?.id === id ? data : prev.selectedSolicitud,
         loading: false
       }));
-      return response;
+      return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Error al aprobar solicitud con ID ${id}`;
       setState(prev => ({
@@ -149,15 +108,14 @@ export const useSolicitud = () => {
   const entregarSolicitud = useCallback(async (id: number, encargadoId: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await solicitudService.entregar(id, encargadoId);
-      const updatedSolicitud = response.data as Solicitud;
+      const data = await solicitudService.entregar(id, encargadoId);
       setState(prev => ({
         ...prev,
-        solicitudes: prev.solicitudes.map(s => s.id === id ? updatedSolicitud : s),
-        selectedSolicitud: prev.selectedSolicitud?.id === id ? updatedSolicitud : prev.selectedSolicitud,
+        solicitudes: prev.solicitudes.map(s => s.id === id ? data : s),
+        selectedSolicitud: prev.selectedSolicitud?.id === id ? data : prev.selectedSolicitud,
         loading: false
       }));
-      return response;
+      return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Error al entregar solicitud con ID ${id}`;
       setState(prev => ({
@@ -172,17 +130,38 @@ export const useSolicitud = () => {
   const devolverSolicitud = useCallback(async (id: number, encargadoId: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await solicitudService.devolver(id, encargadoId);
-      const updatedSolicitud = response.data as Solicitud;
+      const data = await solicitudService.devolver(id, encargadoId);
       setState(prev => ({
         ...prev,
-        solicitudes: prev.solicitudes.map(s => s.id === id ? updatedSolicitud : s),
-        selectedSolicitud: prev.selectedSolicitud?.id === id ? updatedSolicitud : prev.selectedSolicitud,
+        solicitudes: prev.solicitudes.map(s => s.id === id ? data : s),
+        selectedSolicitud: prev.selectedSolicitud?.id === id ? data : prev.selectedSolicitud,
         loading: false
       }));
-      return response;
+      return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Error al devolver solicitud con ID ${id}`;
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+
+  const rechazarSolicitud = useCallback(async (id: number, aprobadorId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await solicitudService.rechazar(id, aprobadorId);
+      setState(prev => ({
+        ...prev,
+        solicitudes: prev.solicitudes.map(s => s.id === id ? data : s),
+        selectedSolicitud: prev.selectedSolicitud?.id === id ? data : prev.selectedSolicitud,
+        loading: false
+      }));
+      return data;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al rechazar solicitud con ID ${id}`;
       setState(prev => ({
         ...prev,
         loading: false,
@@ -195,10 +174,10 @@ export const useSolicitud = () => {
   const fetchMovimientos = useCallback(async (id: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await solicitudService.getMovimientos(id);
+      const data = await solicitudService.obtenerMovimientos(id);
       setState(prev => ({
         ...prev,
-        movimientos: Array.isArray(response.data) ? response.data : [],
+        movimientos: data,
         loading: false
       }));
     } catch (error) {
@@ -210,10 +189,73 @@ export const useSolicitud = () => {
     }
   }, []);
 
+  const fetchResumen = useCallback(async (id: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await solicitudService.obtenerResumen(id);
+      setState(prev => ({
+        ...prev,
+        resumen: data,
+        loading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : `Error al cargar resumen de la solicitud con ID ${id}`
+      }));
+    }
+  }, []);
+
   useEffect(() => {
     fetchSolicitudes();
-  }, [fetchSolicitudes]);
+  }, []);
 
+  // Añadir estas funciones antes del return
+  const updateSolicitud = useCallback(async (id: number, solicitud: Partial<Solicitud>) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await solicitudService.actualizar(id, solicitud);
+      setState(prev => ({
+        ...prev,
+        solicitudes: prev.solicitudes.map(s => s.id === id ? data : s),
+        selectedSolicitud: prev.selectedSolicitud?.id === id ? data : prev.selectedSolicitud,
+        loading: false
+      }));
+      return data;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al actualizar solicitud con ID ${id}`;
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+  
+  const deleteSolicitud = useCallback(async (id: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      await solicitudService.eliminar(id);
+      setState(prev => ({
+        ...prev,
+        solicitudes: prev.solicitudes.filter(s => s.id !== id),
+        selectedSolicitud: prev.selectedSolicitud?.id === id ? null : prev.selectedSolicitud,
+        loading: false
+      }));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al eliminar solicitud con ID ${id}`;
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+  
+  // Y añadirlas al return
   return {
     ...state,
     fetchSolicitudes,
@@ -224,6 +266,8 @@ export const useSolicitud = () => {
     aprobarSolicitud,
     entregarSolicitud,
     devolverSolicitud,
-    fetchMovimientos
+    rechazarSolicitud,
+    fetchMovimientos,
+    fetchResumen
   };
 };

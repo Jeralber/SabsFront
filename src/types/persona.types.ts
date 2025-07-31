@@ -26,3 +26,49 @@ export interface Persona {
   aprobaciones?: Detalles[];
   movimientos?: Movimiento[];
 }
+
+
+export interface PersonaCompleta {
+
+  personaId: number;
+  identificacion: string;
+  personaNombre: string;
+  apellido: string;
+  telefono: string;
+  correo: string;
+  edad: number;
+  personaActiva: boolean;
+  
+
+  rolId?: number;
+  rolNombre?: string;
+  
+
+  fichaId?: number;
+  fichaNumero?: string;
+  cantidadAprendices?: number;
+ 
+  tituladoId?: number;
+  tituladoNombre?: string;
+  
+
+  areaId?: number;
+  areaNombre?: string;
+  
+
+  centroId?: number;
+  centroNombre?: string;
+  
+
+  sedeId?: number;
+  sedeNombre?: string;
+  sedeDireccion?: string;
+  
+  municipioId?: number;
+  municipioNombre?: string;
+}
+
+export interface PersonaCompletaResponse {
+  message: string;
+  data: PersonaCompleta | PersonaCompleta[];
+}

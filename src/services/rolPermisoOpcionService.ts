@@ -48,7 +48,6 @@ export const rolPermisoOpcionService = {
     return response.data;
   },
 
-  // Nuevos métodos basados en tus endpoints
   getPermisosByRol: async (rolId: number): Promise<RolPermisoOpcionResponse> => {
     const response = await axios.get<RolPermisoOpcionResponse>(`${API_URL}/rol/${rolId}`);
     return response.data;

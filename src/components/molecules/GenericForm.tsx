@@ -14,13 +14,17 @@ export type FieldDefinition<T> = {
     | "checkbox"
     | "select"
     | "email"
-    | "password";
+    | "password"
+    | "array";
+  arrayFields?: FieldDefinition<any>[];
   readOnly?: boolean;
   options?: { label: string; value: any }[];
   allowQuickCreate?: boolean;
   quickCreateFields?: FieldDefinition<any>[];
   onQuickCreate?: (data: any) => Promise<{ id: any; label: string }>;
   quickCreateTitle?: string;
+  min?: number;
+  max?: number;
 };
 
 export type GenericFormProps<T> = {
