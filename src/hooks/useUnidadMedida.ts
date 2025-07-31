@@ -97,6 +97,32 @@ export const useUnidadMedida = () => {
     }
   }, []);
 
+
+  const patchUnidadMedida = useCallback(async (id: number, unidadMedida: Partial<UnidadMedida>) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await unidadMedidaService.patch(id, unidadMedida);
+      const updatedUnidadMedida = response.data as UnidadMedida;
+      setState(prev => ({
+        ...prev,
+        unidadesMedida: prev.unidadesMedida.map(um => um.id === id ? updatedUnidadMedida : um),
+        selectedUnidadMedida: prev.selectedUnidadMedida?.id === id ? updatedUnidadMedida : prev.selectedUnidadMedida,
+        loading: false
+      }));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al actualizar unidad de medida con ID ${id}`;
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+
+
+    
   const deleteUnidadMedida = useCallback(async (id: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
@@ -126,6 +152,7 @@ export const useUnidadMedida = () => {
     fetchUnidadMedidaById,
     createUnidadMedida,
     updateUnidadMedida,
-    deleteUnidadMedida
+    deleteUnidadMedida,
+    patchUnidadMedida
   };
 };

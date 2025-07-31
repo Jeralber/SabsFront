@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DataTable } from "../components/molecules/DataTable";
 import { GenericForm } from "../components/molecules/GenericForm";
 import { useArea } from "../hooks/useArea";
 import { Area } from "../types/area.types";
 import { addToast } from "@heroui/react";
-import { Edit, Trash2, MapPin } from "lucide-react";
+import { Edit, Trash2, MapPin, Settings, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -16,10 +17,15 @@ type Column<T> = {
 };
 
 const AreaPage: React.FC = () => {
+  const navigate = useNavigate();
   const { areas, error, createArea, updateArea, deleteArea } = useArea();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
+
+
+  useEffect(() => {
+  }, []);
 
   const columns: Column<Area>[] = [
     {
@@ -39,6 +45,7 @@ const AreaPage: React.FC = () => {
         </div>
       ),
     },
+  
     {
       accessorKey: "activo",
       header: "Estado",
@@ -82,6 +89,7 @@ const AreaPage: React.FC = () => {
       type: "text" as const,
       required: true,
     },
+ 
     {
       name: "activo" as keyof Area,
       label: "Estado Activo",
@@ -89,6 +97,55 @@ const AreaPage: React.FC = () => {
       required: false,
     },
   ];
+
+
+  const getInitialValues = () => {
+    if (editingArea) {
+      return {
+        nombre: editingArea.nombre || '',
+        activo: editingArea.activo ?? true
+      };
+    }
+    return {
+      nombre: '',
+      tituladoId: undefined,
+      areaCentroId: undefined,
+      activo: true
+    };
+  };
+
+  const handleSubmit = async (data: Partial<Area>) => {
+    try {
+      const processedData = {
+        ...data,
+      };
+
+      if (editingArea) {
+        await updateArea(editingArea.id, processedData);
+        addToast({
+          title: "Área actualizada",
+          description: `El área "${data.nombre}" ha sido actualizada exitosamente.`,
+          color: "success",
+        });
+      } else {
+        await createArea(processedData);
+        addToast({
+          title: "Área creada",
+          description: `El área "${data.nombre}" ha sido creada exitosamente.`,
+          color: "success",
+        });
+      }
+      setIsFormOpen(false);
+      setEditingArea(null);
+    } catch (error) {
+      addToast({
+        title: editingArea ? "Error al actualizar" : "Error al crear",
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
+        color: "danger",
+      });
+    }
+  };
 
   const handleCreate = () => {
     setEditingArea(null);
@@ -129,35 +186,6 @@ const AreaPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (data: Partial<Area>) => {
-    try {
-      if (editingArea) {
-        await updateArea(editingArea.id, data);
-        addToast({
-          title: "Área actualizada",
-          description: `El área "${data.nombre}" ha sido actualizada exitosamente.`,
-          color: "success",
-        });
-      } else {
-        await createArea(data);
-        addToast({
-          title: "Área creada",
-          description: `El área "${data.nombre}" ha sido creada exitosamente.`,
-          color: "success",
-        });
-      }
-      setIsFormOpen(false);
-      setEditingArea(null);
-    } catch (error) {
-      addToast({
-        title: editingArea ? "Error al actualizar" : "Error al crear",
-        description:
-          error instanceof Error ? error.message : "Error desconocido",
-        color: "danger",
-      });
-    }
-  };
-
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingArea(null);
@@ -177,6 +205,11 @@ const AreaPage: React.FC = () => {
       variant: "danger" as const,
     },
   ];
+
+  const handleNavigateToAreaCentro = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    navigate('/areacentros');
+  };
 
   if (error) {
     return (
@@ -204,6 +237,28 @@ const AreaPage: React.FC = () => {
         </div>
       </div>
 
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Gestión de Área-Centro</h3>
+            <p className="text-blue-100 mb-4">
+              Administra las relaciones entre áreas y centros del sistema
+            </p>
+            <button
+              onClick={handleNavigateToAreaCentro}
+              className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-200 font-medium"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Gestionar Área-Centro
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+          <div className="hidden md:block">
+            <Settings className="w-16 h-16 text-blue-200" />
+          </div>
+        </div>
+      </div>
+
       <DataTable
         data={areas}
         columns={columns}
@@ -222,7 +277,7 @@ const AreaPage: React.FC = () => {
       {isFormOpen && (
         <GenericForm
           fields={formFields}
-          initialValues={editingArea || { nombre: "", activo: true }}
+          initialValues={getInitialValues()}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />

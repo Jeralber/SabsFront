@@ -9,9 +9,9 @@ export interface Centro {
   activo: boolean;
   fechaCreacion: Date;
   fechaActualizacion?: Date;
-  
+  sede?: Sede;
   // Relaciones
   municipio?: Municipio;
   areasCentro?: AreaCentro[];
-  sedes?: Sede[];
+  sedes?: Sede[];  
 }

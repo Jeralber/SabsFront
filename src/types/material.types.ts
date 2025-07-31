@@ -6,6 +6,7 @@ import { Movimiento } from './movimiento.types';
 
 export interface Material {
   id: number;
+  codigo: string;
   nombre: string;
   descripcion: string;
   stock: number;

@@ -21,7 +21,7 @@ import GestionInventarioPage from "./pages/GestionInventarioPage";
 import TipoMaterialPage from "./pages/TipoMaterialPage";
 import CategoriaMaterialPage from "./pages/CategoriaMaterialPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
-
+import AreaCentroPage from "./pages/AreaCentroPage";
 const queryClient = new QueryClient();
 
 function App() {
@@ -52,6 +52,7 @@ function App() {
             <Route path="/titulados" element={<TituladoPage />} />
             <Route path="/sitios" element={<SitioPage />} />
             <Route path="/administracion" element={<AdministradorPage />} />
+            <Route path="/areacentros" element={<AreaCentroPage />} />
             <Route
               path="/gestion-inventario"
               element={<GestionInventarioPage />}

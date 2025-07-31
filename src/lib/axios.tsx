@@ -8,7 +8,6 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-
 axiosInstance.interceptors.request.use(
   (config) => {
     const userData = localStorage.getItem("auth_user");
@@ -29,12 +28,12 @@ axiosInstance.interceptors.request.use(
 
 let isRedirecting = false;
 
-
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     console.error('API Error:', error);
     
+    // Manejo del error 401 (no autorizado)
     if (error.response && error.response.status === 401 && !isRedirecting) {
       isRedirecting = true;
       localStorage.removeItem("auth_user");
@@ -44,11 +43,23 @@ axiosInstance.interceptors.response.use(
         window.location.href = "/login";
       }
       
-
       setTimeout(() => {
         isRedirecting = false;
       }, 3000);
     }
+    
+ 
+    if (error.response && error.response.status === 403) {
+
+      const customError = new Error("No posees los permisos necesarios para realizar esta acción");
+      customError.name = "ForbiddenError";
+      customError.stack = error.stack;
+      
+      error.message = "No posees los permisos necesarios para realizar esta acción";
+      
+      return Promise.reject(error);
+    }
+    
     return Promise.reject(error);
   }
 );

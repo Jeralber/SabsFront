@@ -60,6 +60,12 @@ const MaterialPage: React.FC = () => {
       header: 'ID',
       sortable: true
     },
+       {
+      accessorKey: 'codigo',
+      header: 'Código',
+      sortable: true,
+      width: '120px'
+    },
     {
       accessorKey: 'nombre',
       header: 'Nombre',
@@ -86,6 +92,7 @@ const MaterialPage: React.FC = () => {
         </span>
       )
     },
+    
     {
       accessorKey: 'tipoMaterial',
       header: 'Tipo',
@@ -97,6 +104,17 @@ const MaterialPage: React.FC = () => {
       header: 'Categoría',
       sortable: false,
       cell: (row: Material) => row.categoriaMaterial?.categoria || 'Sin categoría'
+    },
+    {   
+      accessorKey: 'codigo',
+      header: 'Código',
+      sortable: true,
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{row.codigo}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'caduca',
@@ -159,6 +177,13 @@ const MaterialPage: React.FC = () => {
 
  
   const formFields: FieldDefinition<Material>[] = [
+
+    {
+      name:'codigo',
+      label:'Código de Material',
+      type: 'text',
+      required: true
+    },
     {
       name: 'nombre',
       label: 'Nombre del Material',

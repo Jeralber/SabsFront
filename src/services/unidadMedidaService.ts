@@ -29,6 +29,11 @@ export const unidadMedidaService = {
     return response.data;
   },
 
+  patch: async (id: number, unidadMedida: Partial<UnidadMedida>): Promise<UnidadMedidaResponse> => {
+    const response = await axios.patch<UnidadMedidaResponse>(`${API_URL}/${id}`, unidadMedida);
+    return response.data;
+  },
+
   delete: async (id: number): Promise<UnidadMedidaResponse> => {
     const response = await axios.delete<UnidadMedidaResponse>(`${API_URL}/${id}`);
     return response.data;

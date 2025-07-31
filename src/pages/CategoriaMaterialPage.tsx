@@ -39,8 +39,8 @@ const CategoriaMaterialPage: React.FC = () => {
       width: '80px'
     },
     {   
-      accessorKey: 'nombre' as keyof CategoriaMaterial,
-      header: 'Nombre',
+      accessorKey: 'categoria', // Cambiar de 'nombre' a 'categoria'
+      header: 'Categoría',
       sortable: true,
       cell: (row: CategoriaMaterial) => (
         <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ const CategoriaMaterialPage: React.FC = () => {
 
   const formFields = [
     {
-      name: 'nombre' as keyof CategoriaMaterial,
+      name: 'categoria' as keyof CategoriaMaterial, // Cambiar de 'nombre' a 'categoria'
       label: 'Nombre de la Categoría',
       type: 'text' as const,
       required: true

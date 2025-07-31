@@ -21,7 +21,7 @@ const UnidadMedidaPage: React.FC = () => {
     unidadesMedida,
     error,
     createUnidadMedida,
-    updateUnidadMedida,
+    updateUnidadMedida, 
     deleteUnidadMedida
   } = useUnidadMedida();
 
@@ -37,11 +37,11 @@ const UnidadMedidaPage: React.FC = () => {
       width: '80px'
     },
     {
-      accessorKey: 'unidad' as keyof UnidadMedida,
+      accessorKey: 'unidad' ,
       header: 'Unidad',
       sortable: true,
       cell: (row: UnidadMedida) => (
-        <div className="flex items-center gap-2">
+       <div className="flex items-center gap-2">
           <div className="h-4 w-4 text-blue-500" />
           <span className="font-medium">{row.unidad}</span>
         </div>
@@ -53,7 +53,7 @@ const UnidadMedidaPage: React.FC = () => {
       sortable: true,
       cell: (row: UnidadMedida) => (
         <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono">
-          {row.unidad}
+          {row.simbolo}
         </span>
       )
     },
@@ -90,7 +90,7 @@ const UnidadMedidaPage: React.FC = () => {
 
   const formFields = [
     {
-      name: 'nombre' as keyof UnidadMedida,
+      name: 'unidad' as keyof UnidadMedida,
       label: 'Nombre de la Unidad',
       type: 'text' as const,
       required: true

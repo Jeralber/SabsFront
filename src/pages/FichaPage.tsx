@@ -3,7 +3,7 @@ import { DataTable } from "@/components/molecules/DataTable";
 import { GenericForm, FieldDefinition } from "@/components/molecules/GenericForm";
 import { useFicha } from "@/hooks/useFicha";
 import { Ficha } from "@/types/ficha.types";
-import { Edit, Trash, FileText } from "lucide-react";
+import { Edit, Trash } from "lucide-react";
 import { addToast } from "@heroui/react";
 
 export default function FichaPage() {
@@ -191,12 +191,16 @@ export default function FichaPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto ">
       <div className="flex items-center gap-3 mb-6">
-        <FileText className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+       <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Gestión de Fichas
         </h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Administra las áreas del sistema
+          </p>
+      </div>
       </div>
 
       <DataTable

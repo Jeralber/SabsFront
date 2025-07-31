@@ -1,6 +1,6 @@
 import { Button } from "@heroui/button";
 import { useState, useMemo } from "react";
-import { Edit, Trash, ChevronUp, ChevronDown, Eye, EyeOff, Plus } from "lucide-react";
+import { Edit, Trash, ChevronUp, ChevronDown, Eye, EyeOff, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -23,7 +23,6 @@ interface DataTableProps<T> {
   data: T[] | { data: T[], message?: string };
   title?: string;
   columns: Column<T>[];
-
   actions?: ActionButton<T>[];
   onEdit?: (row: T) => void;
   onCreate?: () => void;
@@ -54,6 +53,7 @@ export function DataTable<T extends { [key: string]: any }>({
   showColumnSelector = true,
   showCreateButton = true,
   createButtonLabel = "Crear",
+  pageSize = 15,
   className = "",
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -65,8 +65,8 @@ export function DataTable<T extends { [key: string]: any }>({
     new Set(columns.map(col => col.accessorKey))
   );
   const [showColumnSelectorPanel, setShowColumnSelectorPanel] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  
   const normalizedData = useMemo(() => {
     if (Array.isArray(data)) {
       return data;
@@ -102,7 +102,6 @@ export function DataTable<T extends { [key: string]: any }>({
   const sortedAndFilteredData = useMemo(() => {
     let filteredData = normalizedData;
     
-
     if (showSearch && searchTerm) {
       filteredData = normalizedData.filter((row) => {
         return columns.some((col) => {
@@ -112,7 +111,6 @@ export function DataTable<T extends { [key: string]: any }>({
       });
     }
 
-  
     if (sortConfig.key) {
       filteredData = [...filteredData].sort((a, b) => {
         const aValue = a[sortConfig.key as keyof T];
@@ -137,6 +135,54 @@ export function DataTable<T extends { [key: string]: any }>({
 
     return filteredData;
   }, [normalizedData, columns, searchTerm, sortConfig, showSearch]);
+
+  // Cálculos de paginación
+  const totalPages = Math.ceil(sortedAndFilteredData.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedData = sortedAndFilteredData.slice(startIndex, endIndex);
+
+  // Resetear página cuando cambian los filtros
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortConfig]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Generar números de página para mostrar
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, start + maxVisiblePages - 1);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
 
   const visibleColumnsList = columns.filter(col => 
     visibleColumns.has(col.accessorKey)
@@ -297,8 +343,8 @@ export function DataTable<T extends { [key: string]: any }>({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedAndFilteredData.length > 0 ? (
-              sortedAndFilteredData.map((row, rowIndex) => (
+            {paginatedData.length > 0 ? (
+              paginatedData.map((row, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   {visibleColumnsList.map((col, i) => (
                     <td key={i} className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
@@ -327,6 +373,50 @@ export function DataTable<T extends { [key: string]: any }>({
           </tbody>
         </table>
       </div>
+
+      {/* Controles de paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            Mostrando {startIndex + 1} a {Math.min(endIndex, sortedAndFilteredData.length)} de {sortedAndFilteredData.length} resultados
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              className="bg-gray-600 text-white hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              size="sm"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            
+            {getPageNumbers().map((page) => (
+              <Button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`${
+                  currentPage === page
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500'
+                }`}
+                size="sm"
+              >
+                {page}
+              </Button>
+            ))}
+            
+            <Button
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              className="bg-gray-600 text-white hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              size="sm"
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

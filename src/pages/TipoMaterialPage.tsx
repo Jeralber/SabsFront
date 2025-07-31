@@ -37,8 +37,8 @@ const TipoMaterialPage: React.FC = () => {
       width: '80px'
     },
     {
-      accessorKey: 'tipo' as keyof TipoMaterial,
-      header: 'Nombre',
+      accessorKey: 'tipo'  as keyof TipoMaterial,
+      header: 'Tipo',
       sortable: true,
       cell: (row: TipoMaterial) => (
         <div className="flex items-center gap-2">
@@ -80,7 +80,7 @@ const TipoMaterialPage: React.FC = () => {
 
   const formFields = [
     {
-      name: 'nombre' as keyof TipoMaterial,
+      name: 'tipo' as keyof TipoMaterial, 
       label: 'Nombre del Tipo de Material',
       type: 'text' as const,
       required: true

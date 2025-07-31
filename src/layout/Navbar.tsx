@@ -21,7 +21,6 @@ export const Navbar = ({ toggleSidebar }: NavbarProps) => {
         >
           <Bars3Icon className="h-6 w-6" />
         </button>
-        <img src="/logo.png" alt="Logo" className="h-8 w-8" />
         <h1 className="text-xl font-bold text-white dark:text-white">SABS</h1>
       </div>
 

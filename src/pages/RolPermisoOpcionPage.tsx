@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DataTable } from '../components/molecules/DataTable';
 import { GenericForm } from '../components/molecules/GenericForm';
 import { useRolPermisoOpcion } from '../hooks/useRolPermisoOpcion';
@@ -27,12 +27,19 @@ const RolPermisoOpcionPage: React.FC = () => {
     deleteRolPermisoOpcion
   } = useRolPermisoOpcion();
 
-  const { roles } = useRol();
-  const { permisos } = usePermiso();
-  const { opciones } = useOpcion();
+  const { roles, fetchRoles } = useRol();
+  const { permisos, fetchPermisos } = usePermiso();
+  const { opciones, fetchOpciones } = useOpcion();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRolPermisoOpcion, setEditingRolPermisoOpcion] = useState<RolPermisoOpcion | null>(null);
+
+
+  useEffect(() => {
+    fetchRoles();
+    fetchPermisos();
+    fetchOpciones();
+  }, [fetchRoles, fetchPermisos, fetchOpciones]);
 
   const columns: Column<RolPermisoOpcion>[] = [
     {
@@ -109,6 +116,20 @@ const RolPermisoOpcionPage: React.FC = () => {
     }
   ];
 
+
+
+  const getInitialValues = (rolPermisoOpcion: RolPermisoOpcion | null) => {
+    if (!rolPermisoOpcion) {
+      return { rolId: undefined, permisoId: undefined, opcionId: undefined };
+    }
+    
+    return {
+      rolId: rolPermisoOpcion.rolId || rolPermisoOpcion.rol?.id || undefined,
+      permisoId: rolPermisoOpcion.permisoId || rolPermisoOpcion.permiso?.id || undefined,
+      opcionId: rolPermisoOpcion.opcionId || rolPermisoOpcion.opcion?.id || undefined
+    };
+  };
+
   const handleCreate = () => {
     setEditingRolPermisoOpcion(null);
     setIsFormOpen(true);
@@ -147,15 +168,23 @@ const RolPermisoOpcionPage: React.FC = () => {
 
   const handleSubmit = async (data: Partial<RolPermisoOpcion>) => {
     try {
+      // Convertir strings vacíos a números
+      const processedData = {
+        ...data,
+        rolId: data.rolId ? Number(data.rolId) : undefined,
+        permisoId: data.permisoId ? Number(data.permisoId) : undefined,
+        opcionId: data.opcionId ? Number(data.opcionId) : undefined
+      };
+
       if (editingRolPermisoOpcion) {
-        await updateRolPermisoOpcion(editingRolPermisoOpcion.id, data);
+        await updateRolPermisoOpcion(editingRolPermisoOpcion.id, processedData);
         addToast({
           title: 'Asignación actualizada',
           description: 'La asignación de rol-permiso-opción ha sido actualizada exitosamente.',
           color: 'success'
         });
       } else {
-        await createRolPermisoOpcion(data);
+        await createRolPermisoOpcion(processedData);
         addToast({
           title: 'Asignación creada',
           description: 'La asignación de rol-permiso-opción ha sido creada exitosamente.',
@@ -239,7 +268,7 @@ const RolPermisoOpcionPage: React.FC = () => {
       {isFormOpen && (
         <GenericForm
           fields={formFields}
-          initialValues={editingRolPermisoOpcion || { rolId: 0, permisoId: 0, opcionId: 0 }}
+          initialValues={getInitialValues(editingRolPermisoOpcion)}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />
