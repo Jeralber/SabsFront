@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Card, CardBody, CardHeader } from '@heroui/react';
-import { Settings, Shield, Users, Key, Link, Database } from 'lucide-react';
-
+import { Settings, Shield, Users, Key, Link, Database, UserCheck } from 'lucide-react';
 
 import ModuloPage from './ModuloPage';
 import OpcionPage from './OpcionPage';
 import RolPage from './RolPage';
 import PermisoPage from './PermisoPage';
 import RolPermisoOpcionPage from './RolPermisoOpcionPage';
+import GestionPermisosRolPage from './GestionPermisosRolPage';
 
-type AdminSection = 'modulo' | 'opcion' | 'rol' | 'permiso' | 'rol-permiso-opcion' | null;
+type AdminSection = 'modulo' | 'opcion' | 'rol' | 'permiso' | 'rol-permiso-opcion' | 'gestion-permisos-rol' | null;
 
 const AdministradorPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<AdminSection>(null);
@@ -49,6 +49,13 @@ const AdministradorPage: React.FC = () => {
       description: 'Asigna permisos a roles y opciones',
       icon: <Shield className="h-8 w-8" />,
       color: 'bg-red-500'
+    },
+    {
+      id: 'gestion-permisos-rol' as AdminSection,
+      title: 'Gestión de Permisos por Rol',
+      description: 'Asignar permisos a roles de forma masiva',
+      icon: <UserCheck size={24} />,
+      color: 'bg-gradient-to-br from-indigo-500 to-purple-600'
     }
   ];
 
@@ -64,6 +71,8 @@ const AdministradorPage: React.FC = () => {
         return <PermisoPage />;
       case 'rol-permiso-opcion':
         return <RolPermisoOpcionPage />;
+      case 'gestion-permisos-rol':
+        return <GestionPermisosRolPage />;
       default:
         return null;
     }
