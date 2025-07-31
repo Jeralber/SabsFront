@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Button, Select, SelectItem, Checkbox } from '@heroui/react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardBody, CardHeader, Button, Select, SelectItem } from '@heroui/react';
 import { useRol } from '../hooks/useRol';
 import { useModulo } from '../hooks/useModulo';
-import { rolPermisoOpcionService, PermisoDisponible } from '../services/rolPermisoOpcionService';
-import { permisoService } from '../services/permisoService';
-import { opcionService } from '../services/opcionService';
-import { RolPermisoOpcion } from '../types/rol-permiso-opcion.types';
+import { rolPermisoOpcionService } from '../services/rolPermisoOpcionService';
 import { addToast } from '@heroui/react';
 import { Shield, Save, RotateCcw } from 'lucide-react';
+
+// Tipo actualizado para incluir el campo 'asignado'
+interface PermisoDisponible {
+  id: number;
+  nombre: string;
+  codigo: string;
+  opcionId?: number;
+  opcionNombre?: string;
+  asignado?: boolean; // Cambiar a opcional
+}
 
 const GestionPermisosRolPage: React.FC = () => {
   const { roles } = useRol();
   const { modulos } = useModulo();
   const [selectedRolId, setSelectedRolId] = useState<number | null>(null);
   const [permisosDisponibles, setPermisosDisponibles] = useState<PermisoDisponible[]>([]);
-  const [permisosAsignados, setPermisosAsignados] = useState<RolPermisoOpcion[]>([]);
-  const [permisosSeleccionados, setPermisosSeleccionados] = useState<string[]>([]);
+  const [permisosSeleccionados, setPermisosSeleccionados] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -23,76 +29,40 @@ const GestionPermisosRolPage: React.FC = () => {
   const accionesEstandar = ['ver', 'crear', 'editar', 'eliminar'];
 
   useEffect(() => {
-    cargarPermisosDisponibles();
-  }, []);
-
-  useEffect(() => {
     if (selectedRolId) {
-      cargarPermisosDelRol(selectedRolId);
+      cargarPermisosDisponibles(selectedRolId);
     } else {
-      setPermisosAsignados([]);
-      setPermisosSeleccionados([]);
+      setPermisosDisponibles([]);
+      setPermisosSeleccionados(new Set());
     }
   }, [selectedRolId]);
 
-  const cargarPermisosDisponibles = async () => {
+  const cargarPermisosDisponibles = async (rolId: number) => {
+    setLoading(true);
     try {
-      const [permisosResponse, opcionesResponse] = await Promise.all([
-        permisoService.getAllWithOpcionYModulo(),
-        opcionService.getAllWithPermisos()
-      ]);
+      // Usar la nueva consulta del backend que incluye el campo 'asignado'
+      const response = await rolPermisoOpcionService.findAllPermisosDisponibles(rolId);
+      const permisos = Array.isArray(response.data) ? response.data : [];
       
-      const permisos = Array.isArray(permisosResponse.data) ? permisosResponse.data : [];
-      const opciones = Array.isArray(opcionesResponse.data) ? opcionesResponse.data : [];
+      setPermisosDisponibles(permisos);
       
-      const permisosDisponibles: PermisoDisponible[] = [];
-      
+      // Inicializar permisos seleccionados basándose en el campo 'asignado'
+      const seleccionados = new Set<string>();
       permisos.forEach(permiso => {
-        permisosDisponibles.push({
-          id: permiso.id,
-          nombre: permiso.nombre
-        });
-        
-        opciones.forEach(opcion => {
-          permisosDisponibles.push({
-            id: permiso.id,
-            nombre: permiso.nombre,
-            opcionId: opcion.id,
-            opcionNombre: opcion.nombre
-          });
-        });
+        if (permiso.asignado === true) { // Verificación explícita
+          const key = permiso.opcionId ? 
+            `${permiso.id}-${permiso.opcionId}` : 
+            `${permiso.id}`;
+          seleccionados.add(key);
+        }
       });
+      setPermisosSeleccionados(seleccionados);
       
-      setPermisosDisponibles(permisosDisponibles);
     } catch (error) {
-      console.error('Error al cargar permisos disponibles:', error);
+      console.error('Error al cargar permisos:', error);
       addToast({
         title: 'Error',
         description: 'No se pudieron cargar los permisos disponibles',
-        color: 'danger'
-      });
-    }
-  };
-
-  const cargarPermisosDelRol = async (rolId: number) => {
-    setLoading(true);
-    try {
-      const response = await rolPermisoOpcionService.getPermisosByRol(rolId);
-      const permisos = Array.isArray(response.data) ? response.data : [];
-      setPermisosAsignados(permisos);
-      
-      const seleccionados = permisos.map(p => {
-        if (p.opcionId) {
-          return `${p.permisoId}-${p.opcionId}`;
-        }
-        return `${p.permisoId}`;
-      });
-      setPermisosSeleccionados(seleccionados);
-    } catch (error) {
-      console.error('Error al cargar permisos del rol:', error);
-      addToast({
-        title: 'Error',
-        description: 'No se pudieron cargar los permisos del rol',
         color: 'danger'
       });
     } finally {
@@ -100,19 +70,63 @@ const GestionPermisosRolPage: React.FC = () => {
     }
   };
 
-  const handleGuardarPermisos = async () => {
-    if (!selectedRolId) {
-      addToast({
-        title: 'Error',
-        description: 'Debe seleccionar un rol',
-        color: 'danger'
-      });
-      return;
-    }
+  const normalizeString = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
+  const isPermisoSelected = useCallback((moduloNombre: string, accion: string) => {
+    const moduloNorm = normalizeString(moduloNombre);
+    const accionNorm = normalizeString(accion);
+    
+    const permisoEncontrado = permisosDisponibles.find(p => {
+      const nombreNorm = normalizeString(p.nombre);
+      const opcionNorm = p.opcionNombre ? normalizeString(p.opcionNombre) : '';
+      const combined = nombreNorm + ' ' + opcionNorm;
+      
+      return combined.includes(moduloNorm) && combined.includes(accionNorm);
+    });
+    
+    if (permisoEncontrado) {
+      const key = permisoEncontrado.opcionId ? 
+        `${permisoEncontrado.id}-${permisoEncontrado.opcionId}` : 
+        `${permisoEncontrado.id}`;
+      return permisosSeleccionados.has(key);
+    }
+    
+    return false;
+  }, [permisosDisponibles, permisosSeleccionados]);
+
+  const togglePermiso = (moduloNombre: string, accion: string) => {
+    const moduloNorm = normalizeString(moduloNombre);
+    const accionNorm = normalizeString(accion);
+    
+    const permisoEncontrado = permisosDisponibles.find(p => {
+      const nombreNorm = normalizeString(p.nombre);
+      const opcionNorm = p.opcionNombre ? normalizeString(p.opcionNombre) : '';
+      const combined = nombreNorm + ' ' + opcionNorm;
+      
+      return combined.includes(moduloNorm) && combined.includes(accionNorm);
+    });
+    
+    if (permisoEncontrado) {
+      const key = permisoEncontrado.opcionId ? 
+        `${permisoEncontrado.id}-${permisoEncontrado.opcionId}` : 
+        `${permisoEncontrado.id}`;
+      
+      setPermisosSeleccionados(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) {
+          newSet.delete(key);
+        } else {
+          newSet.add(key);
+        }
+        return newSet;
+      });
+    }
+  };
+
+  const handleGuardarPermisos = async () => {
     setSaving(true);
     try {
-      const permisosData = permisosSeleccionados.map(seleccion => {
+      const permisosData = Array.from(permisosSeleccionados).map(seleccion => {
         const [permisoId, opcionId] = seleccion.split('-').map(Number);
         return {
           permisoId,
@@ -120,13 +134,16 @@ const GestionPermisosRolPage: React.FC = () => {
         };
       });
 
-      await rolPermisoOpcionService.asignarPermisosARol(selectedRolId, permisosData);
-      
-      addToast({
-        title: 'Éxito',
-        description: 'Permisos guardados correctamente',
-        color: 'success'
-      });
+      if (selectedRolId !== null) {
+        await rolPermisoOpcionService.asignarPermisosARol(selectedRolId, permisosData);
+        addToast({
+          title: 'Éxito',
+          description: 'Permisos guardados correctamente',
+          color: 'success'
+        });
+        // Recargar permisos para reflejar los cambios
+        await cargarPermisosDisponibles(selectedRolId);
+      }
     } catch (error) {
       console.error('Error al guardar permisos:', error);
       addToast({
@@ -141,43 +158,12 @@ const GestionPermisosRolPage: React.FC = () => {
 
   const handleReset = () => {
     if (selectedRolId) {
-      cargarPermisosDelRol(selectedRolId);
+      cargarPermisosDisponibles(selectedRolId);
     }
   };
 
-  const isPermisoSelected = (moduloNombre: string, accion: string): boolean => {
-    const permisoKey = `${moduloNombre.toLowerCase()}.${accion}`;
-    return permisosSeleccionados.some(seleccion => {
-      const permiso = permisosDisponibles.find(p => {
-        const key = p.opcionId ? `${p.id}-${p.opcionId}` : `${p.id}`;
-        return key === seleccion;
-      });
-      return permiso && permiso.nombre.toLowerCase().includes(permisoKey);
-    });
-  };
-
-  const togglePermiso = (moduloNombre: string, accion: string) => {
-    const permisoEncontrado = permisosDisponibles.find(p => {
-      const nombrePermiso = p.nombre.toLowerCase();
-      const moduloLower = moduloNombre.toLowerCase();
-      return nombrePermiso.includes(`${moduloLower}.${accion}`) || 
-             (nombrePermiso.includes(moduloLower) && p.opcionNombre?.toLowerCase().includes(accion));
-    });
-
-    if (permisoEncontrado) {
-      const key = permisoEncontrado.opcionId ? 
-        `${permisoEncontrado.id}-${permisoEncontrado.opcionId}` : 
-        `${permisoEncontrado.id}`;
-      
-      setPermisosSeleccionados(prev => {
-        if (prev.includes(key)) {
-          return prev.filter(p => p !== key);
-        } else {
-          return [...prev, key];
-        }
-      });
-    }
-  };
+  // Calcular número de permisos asignados
+  const permisosAsignadosCount = permisosDisponibles.filter(p => p.asignado).length;
 
   return (
     <div className="space-y-6">
@@ -220,7 +206,7 @@ const GestionPermisosRolPage: React.FC = () => {
             </div>
             <div className="flex gap-2">
               <Button
-                color="secondary"
+                color="danger"
                 variant="bordered"
                 startContent={<RotateCcw size={16} />}
                 onClick={handleReset}
@@ -229,7 +215,7 @@ const GestionPermisosRolPage: React.FC = () => {
                 Restablecer
               </Button>
               <Button
-                color="primary"
+                color="success"
                 startContent={<Save size={16} />}
                 onClick={handleGuardarPermisos}
                 isLoading={saving}
@@ -240,6 +226,13 @@ const GestionPermisosRolPage: React.FC = () => {
             </div>
           </CardHeader>
           <CardBody>
+            {selectedRolId && (
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
+                  Permisos Asignados: {permisosAsignadosCount}
+                </h4>
+              </div>
+            )}
             {loading ? (
               <div className="flex justify-center py-8">
                 <div className="text-gray-500">Cargando permisos...</div>
@@ -269,13 +262,18 @@ const GestionPermisosRolPage: React.FC = () => {
                           const isSelected = isPermisoSelected(modulo.nombre, accion);
                           return (
                             <td key={accion} className="p-4 text-center">
-                              <Checkbox
-                                isSelected={isSelected}
-                                onChange={() => togglePermiso(modulo.nombre, accion)}
-                                color="success"
-                                size="lg"
-                                className="data-[selected=true]:text-green-600"
-                              />
+                              <div 
+                                className={`w-6 h-6 border-2 rounded cursor-pointer flex items-center justify-center transition-all duration-200 ${
+                                  isSelected 
+                                    ? 'bg-green-500 border-green-500 text-white' 
+                                    : 'border-gray-300 hover:border-green-400 bg-white dark:bg-gray-700 dark:border-gray-600'
+                                }`}
+                                onClick={() => togglePermiso(modulo.nombre, accion)}
+                              >
+                                {isSelected && (
+                                  <span className="text-white font-bold text-sm">✓</span>
+                                )}
+                              </div>
                             </td>
                           );
                         })}

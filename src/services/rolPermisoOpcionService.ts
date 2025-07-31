@@ -11,8 +11,10 @@ export interface RolPermisoOpcionResponse {
 export interface PermisoDisponible {
   id: number;
   nombre: string;
+  codigo: string; 
   opcionId?: number;
   opcionNombre?: string;
+  asignado?: boolean; 
 }
 
 export interface PermisosDisponiblesResponse {
@@ -60,5 +62,15 @@ export const rolPermisoOpcionService = {
   getPermisosDisponibles: async (): Promise<PermisosDisponiblesResponse> => {
     const response = await axios.get<PermisosDisponiblesResponse>(`${API_URL}/permisos-disponibles`);
     return response.data;
+  },
+
+ 
+  findAllPermisosDisponibles: async (rolId?: number): Promise<PermisosDisponiblesResponse> => {
+    const url = rolId 
+      ? `${API_URL}/permisos-disponibles/${rolId}`
+      : `${API_URL}/permisos-disponibles`;
+    const response = await axios.get<PermisosDisponiblesResponse>(url);
+    return response.data;
   }
+  
 };
