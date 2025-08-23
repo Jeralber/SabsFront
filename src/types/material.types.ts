@@ -3,6 +3,7 @@ import { UnidadMedida } from './unidad-medida.types';
 import { CategoriaMaterial } from './categoria-material.types';
 import { Detalles } from './detalles.types';
 import { Movimiento } from './movimiento.types';
+import { Sitio } from './sitio.types';
 
 export interface Material {
   id: number;
@@ -18,6 +19,7 @@ export interface Material {
   tipoMaterialId?: number;
   unidadMedidaId?: number;
   categoriaMaterialId?: number;
+  sitioId?: number;
   
   // Relaciones
   tipoMaterial?: TipoMaterial;
@@ -25,4 +27,5 @@ export interface Material {
   categoriaMaterial?: CategoriaMaterial;
   detalles?: Detalles[];
   movimientos?: Movimiento[];
+  sitio?: Sitio;
 }

@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
-import { DataTable } from '../components/molecules/DataTable';
-import { GenericForm, FieldDefinition } from '../components/molecules/GenericForm';
-import { useMovimiento } from '../hooks/useMovimiento';
-import { useTipoMovimiento } from '../hooks/useTipoMovimiento';
-import { usePersona } from '../hooks/usePersona';
-import { useMaterial } from '../hooks/useMaterial';
-import { useSolicitud } from '../hooks/useSolicitud';
+import React, { useState } from "react";
+import { DataTable } from "../components/molecules/DataTable";
+import {
+  GenericForm,
+  FieldDefinition,
+} from "../components/molecules/GenericForm";
+import { useMovimiento } from "../hooks/useMovimiento";
+import { useTipoMovimiento } from "../hooks/useTipoMovimiento";
+import { usePersona } from "../hooks/usePersona";
+import { useMaterial } from "../hooks/useMaterial";
+import { useSolicitud } from "../hooks/useSolicitud";
+import { useDetalles } from "../hooks/useDetalles";
 
-import { Movimiento } from '../types/movimiento.types';
-import { addToast } from '@heroui/react';
-import { Edit, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
-
+import { Movimiento } from "../types/movimiento.types";
+import { addToast } from "@heroui/react";
+import { Edit, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { useSitio } from "@/hooks/useSitio";
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -22,155 +26,192 @@ type Column<T> = {
 };
 
 const MovimientoPage: React.FC = () => {
+  const { sitios } = useSitio();
   const {
     movimientos,
     loading,
     error,
     createMovimientoConSolicitud, // Agregar esta línea
     updateMovimiento,
-    deleteMovimiento
+    deleteMovimiento,
   } = useMovimiento();
 
   const { tiposMovimiento } = useTipoMovimiento();
   const { personas } = usePersona();
   const { materiales } = useMaterial();
   const { solicitudes } = useSolicitud();
+  const { createDetalle } = useDetalles();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingMovimiento, setEditingMovimiento] = useState<Movimiento | null>(null);
+  const [editingMovimiento, setEditingMovimiento] = useState<Movimiento | null>(
+    null
+  );
 
-  
-  const solicitudesPendientes = solicitudes.filter(solicitud => solicitud.estado === 'PENDIENTE');
+  const solicitudesPendientes = solicitudes.filter(
+    (solicitud) => solicitud.estado === "PENDIENTE"
+  );
 
   const columns: Column<Movimiento>[] = [
     {
-      accessorKey: 'id',
-      header: 'ID',
+      accessorKey: "id",
+      header: "ID",
       sortable: true,
-      width: '80px'
+      width: "80px",
     },
     {
-      accessorKey: 'tipoMovimiento',
-      header: 'Tipo',
+      accessorKey: "tipoMovimiento",
+      header: "Tipo",
       sortable: true,
       cell: (row: Movimiento) => (
         <div className="flex items-center gap-2">
-          {row.tipoMovimiento?.nombre?.toLowerCase().includes('entrada') ? 
-            <ArrowUp className="h-4 w-4 text-green-500" /> : 
+          {row.tipoMovimiento?.nombre?.toLowerCase().includes("entrada") ? (
+            <ArrowUp className="h-4 w-4 text-green-500" />
+          ) : (
             <ArrowDown className="h-4 w-4 text-red-500" />
-          }
-          <span className="font-medium">{row.tipoMovimiento?.nombre || 'Sin tipo'}</span>
+          )}
+          <span className="font-medium">
+            {row.tipoMovimiento?.nombre || "Sin tipo"}
+          </span>
         </div>
-      )
+      ),
     },
     {
-      accessorKey: 'material',
-      header: 'Material',
+      accessorKey: "material",
+      header: "Material",
       sortable: true,
       cell: (row: Movimiento) => (
         <span className="text-sm text-gray-600">
-          {row.material?.nombre || 'Sin material'}
+          {row.material?.nombre || "Sin material"}
         </span>
-      )
+      ),
     },
     {
-      accessorKey: 'cantidad',
-      header: 'Cantidad',
+      accessorKey: "descripcion",
+      header: "Descripción",
+      sortable: true,
+    },
+     {
+      accessorKey: "sitio",
+      header: "Sitio",
+      sortable: false,
+      cell: (row: Movimiento) => row.sitio?.nombre || "Sin sitio",
+    },
+    {
+      accessorKey: "cantidad",
+      header: "Cantidad",
       sortable: true,
       cell: (row: Movimiento) => (
-        <span className="font-semibold text-blue-600">
-          {row.cantidad}
-        </span>
-      )
+        <span className="font-semibold text-blue-600">{row.cantidad}</span>
+      ),
     },
     {
-      accessorKey: 'persona',
-      header: 'Persona',
+      accessorKey: "persona",
+      header: "Persona",
       sortable: true,
       cell: (row: Movimiento) => (
         <span className="text-sm text-gray-600">
-          {row.persona ? `${row.persona.nombre} ${row.persona.apellido || ''}` : 'Sin asignar'}
+          {row.persona
+            ? `${row.persona.nombre} ${row.persona.apellido || ""}`
+            : "Sin asignar"}
         </span>
-      )
+      ),
     },
     {
-      accessorKey: 'solicitud',
-      header: 'Solicitud',
+      accessorKey: "solicitud",
+      header: "Solicitud",
       sortable: true,
       cell: (row: Movimiento) => (
         <span className="text-sm text-gray-600">
-          {row.solicitud?.descripcion || 'Sin solicitud'}
+          {row.solicitud?.descripcion || "Sin solicitud"}
         </span>
-      )
+      ),
     },
     {
-      accessorKey: 'activo',
-      header: 'Estado',
+      accessorKey: "activo",
+      header: "Estado",
       sortable: true,
       cell: (row: Movimiento) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            row.activo
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+          }`}
+        >
+          {row.activo ? "Activo" : "Inactivo"}
         </span>
-      )
+      ),
     },
     {
-      accessorKey: 'fechaCreacion',
-      header: 'Fecha Creación',
+      accessorKey: "fechaCreacion",
+      header: "Fecha Creación",
       sortable: true,
       isDate: true,
-      width: '150px'
-    }
+      width: "150px",
+    },
   ];
 
   const formFields: FieldDefinition<Movimiento>[] = [
     {
-      name: 'tipoMovimientoId',
-      label: 'Tipo de Movimiento',
-      type: 'select',
+      name: "tipoMovimientoId",
+      label: "Tipo de Movimiento",
+      type: "select",
       required: true,
-      options: tiposMovimiento.map(tipo => ({
+      options: tiposMovimiento.map((tipo) => ({
         value: tipo.id,
-        label: tipo.nombre
-      }))
+        label: tipo.nombre,
+      })),
     },
     {
-      name: 'materialId',
-      label: 'Material',
-      type: 'select',
+      name: "materialId",
+      label: "Material",
+      type: "select",
       required: true,
-      options: materiales.map(material => ({
+      options: materiales.map((material) => ({
         value: material.id,
-        label: material.nombre
-      }))
+        label: material.nombre,
+      })),
     },
     {
-      name: 'cantidad',
-      label: 'Cantidad',
-      type: 'number',
-      required: true
+  name: "descripcion",
+  label: "Descripción",
+  type: "text",
+  required: true,
+},
+    {
+      name: "sitio",
+      label: "Sitio",
+      type: "select",
+      required: true,
+      options: sitios.map(sitio => ({
+        value: sitio.id,
+        label: sitio.nombre
+      })),
+    },
+    {
+      name: "cantidad",
+      label: "Cantidad",
+      type: "number",
+      required: true,
     },
 
     {
-      name: 'personaId',
-      label: 'Persona',
-      type: 'select',
-      options: personas.map(persona => ({
+      name: "personaId",
+      label: "Persona",
+      type: "select",
+      options: personas.map((persona) => ({
         value: persona.id,
-        label: `${persona.nombre} ${persona.apellido || ''}`
-      }))
+        label: `${persona.nombre} ${persona.apellido || ""}`,
+      })),
     },
     {
-      name: 'solicitudId',
-      label: 'Solicitud Pendiente (Opcional)',
-      type: 'select',
-      options: solicitudesPendientes.map(solicitud => ({
+      name: "solicitudId",
+      label: "Solicitud Pendiente (Opcional)",
+      type: "select",
+      options: solicitudesPendientes.map((solicitud) => ({
         value: solicitud.id,
-        label: `${solicitud.descripcion} - ${solicitud.solicitante?.nombre || 'Sin solicitante'}`
-      }))
-    }
+        label: `${solicitud.descripcion} - ${solicitud.solicitante?.nombre || "Sin solicitante"}`,
+      })),
+    },
   ];
 
   const handleCreate = () => {
@@ -187,15 +228,16 @@ const MovimientoPage: React.FC = () => {
     try {
       await deleteMovimiento(movimiento.id);
       addToast({
-        title: 'Movimiento eliminado',
+        title: "Movimiento eliminado",
         description: `El movimiento ha sido eliminado exitosamente.`,
-        color: 'success'
+        color: "success",
       });
     } catch (error) {
       addToast({
-        title: 'Error al eliminar',
-        description: error instanceof Error ? error.message : 'Error desconocido',
-        color: 'danger'
+        title: "Error al eliminar",
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
+        color: "danger",
       });
     }
   };
@@ -206,23 +248,30 @@ const MovimientoPage: React.FC = () => {
         // Actualizar movimiento existente
         await updateMovimiento(editingMovimiento.id, data);
         addToast({
-          title: 'Movimiento actualizado',
+          title: "Movimiento actualizado",
           description: `El movimiento ha sido actualizado exitosamente.`,
-          color: 'success'
+          color: "success",
         });
       } else {
         const response = await createMovimientoConSolicitud(data);
+        if (!response.data.detalle) {
+          await createDetalle({
+            cantidad: data.cantidad ?? 0,
+            materialId: data.materialId!,
+            solicitudId: response.data.solicitud,
+          });
+        }
         addToast({
-          title: 'Movimiento creado',
+          title: "Movimiento creado",
           description: `Movimiento, solicitud y detalle creados exitosamente.`,
-          color: 'success'
+          color: "success",
         });
-        
+
         if (response.data.detalle) {
           addToast({
-            title: 'Detalle generado',
+            title: "Detalle generado",
             description: `Se ha creado automáticamente un detalle pendiente de aprobación.`,
-            color: 'primary'
+            color: "primary",
           });
         }
       }
@@ -230,9 +279,12 @@ const MovimientoPage: React.FC = () => {
       setEditingMovimiento(null);
     } catch (error) {
       addToast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Error al procesar movimiento',
-        color: 'danger'
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al procesar movimiento",
+        color: "danger",
       });
     }
   };
@@ -245,22 +297,24 @@ const MovimientoPage: React.FC = () => {
   const actions = [
     {
       icon: <Edit className="h-4 w-4" />,
-      label: 'Editar',
+      label: "Editar",
       onClick: handleEdit,
-      color: 'primary' as const
+      color: "primary" as const,
     },
     {
       icon: <Trash2 className="h-4 w-4" />,
-      label: 'Eliminar',
+      label: "Eliminar",
       onClick: handleDelete,
-      color: 'danger' as const
-    }
+      color: "danger" as const,
+    },
   ];
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-lg text-gray-600 dark:text-gray-400">Cargando movimientos...</div>
+        <div className="text-lg text-gray-600 dark:text-gray-400">
+          Cargando movimientos...
+        </div>
       </div>
     );
   }
@@ -268,13 +322,15 @@ const MovimientoPage: React.FC = () => {
   if (error) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-lg text-red-600 dark:text-red-400">Error: {error}</div>
+        <div className="text-lg text-red-600 dark:text-red-400">
+          Error: {error}
+        </div>
       </div>
     );
   }
 
   return (
-   <div className="space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

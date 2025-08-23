@@ -19,6 +19,11 @@ export const materialService = {
     return response.data;
   },
 
+  getBySitio: async (sitioId: number): Promise<MaterialResponse> => {
+    const response = await axios.get<MaterialResponse>(`${API_URL}?sitioId=${sitioId}`);
+    return response.data;
+  },
+
   getStock: async (): Promise<Material[]> => {
     const response = await axios.get<Material[]>(`${API_URL}/stock`);
     return response.data;

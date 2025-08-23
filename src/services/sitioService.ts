@@ -19,6 +19,11 @@ export const sitioService = {
     return response.data;
   },
 
+  getByTipoSitio: async (tipoSitioId: number): Promise<SitioResponse> => {
+    const response = await axios.get<SitioResponse>(`${API_URL}?tipoSitioId=${tipoSitioId}`);
+    return response.data;
+  },
+
   create: async (sitio: Partial<Sitio>): Promise<SitioResponse> => {
     const response = await axios.post<SitioResponse>(API_URL, sitio);
     return response.data;

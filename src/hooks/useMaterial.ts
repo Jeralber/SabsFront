@@ -73,6 +73,24 @@ export const useMaterial = () => {
     }
   }, []);
 
+  const fetchBySitio = useCallback(async (sitioId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await materialService.getBySitio(sitioId);
+      setState(prev => ({
+        ...prev,
+        materiales: Array.isArray(response.data) ? response.data : [],
+        loading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al cargar materiales por sitio'
+      }));
+    }
+  }, []);
+
   const createMaterial = useCallback(async (material: Partial<Material>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
@@ -145,6 +163,7 @@ export const useMaterial = () => {
     fetchMateriales,
     fetchStock,
     fetchMaterialById,
+    fetchBySitio,  // Agregamos fetchBySitio aquí para que esté disponible
     createMaterial,
     updateMaterial,
     deleteMaterial

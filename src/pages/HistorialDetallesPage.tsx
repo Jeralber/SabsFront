@@ -11,7 +11,8 @@ import { toast } from 'react-hot-toast';
 const HistorialDetallesPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { historial, loading, error, fetchHistorialCompleto, fetchHistorialPorPersona, aprobarDetalle, rechazarDetalle } = useDetalles();
+  const { historial, loading, error, fetchHistorialCompleto, fetchHistorialPorPersona, aprobarDetalle, rechazarDetalle, entregarDetalle, devolverDetalle } = useDetalles();
+
   const { personas } = usePersona();
   const [selectedPersonaId, setSelectedPersonaId] = useState<number | null>(null);
   const [updatingStates, setUpdatingStates] = useState<{ [key: string]: boolean }>({});
@@ -68,6 +69,12 @@ const HistorialDetallesPage: React.FC = () => {
       } else if (accion === 'rechazar') {
         await rechazarDetalle(detalleId, userId);
         toast.success(`Detalle #${detalleId} rechazado exitosamente`);
+      } else if (accion === 'entregar') {
+        await entregarDetalle(detalleId, userId);
+        toast.success(`Detalle #${detalleId} entregado exitosamente`);
+      } else if (accion === 'devolver') {
+        await devolverDetalle(detalleId, userId);
+        toast.success(`Detalle #${detalleId} devuelto exitosamente`);
       } else {
         throw new Error('Acción no válida para detalles');
       }
@@ -111,9 +118,11 @@ const HistorialDetallesPage: React.FC = () => {
         label: 'Rechazar',
         icon: XCircle,
         color: 'bg-red-500 hover:bg-red-600 text-white'
-      }
+      },
+      { accion: 'entregar', label: 'Entregar', icon: CheckCircle, color: 'bg-blue-500 hover:bg-blue-600 text-white' },
+      { accion: 'devolver', label: 'Devolver', icon: XCircle, color: 'bg-purple-500 hover:bg-purple-600 text-white' },
     ];
-
+    // Implementar handleUpdateDetalleEstado para nuevas acciones llamando servicios correspondientes
     return buttons.map((button) => {
       const updateKey = `${detalleId}-${button.accion}`;
       const isUpdating = updatingStates[updateKey];

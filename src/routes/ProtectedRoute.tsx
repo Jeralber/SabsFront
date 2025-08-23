@@ -14,7 +14,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredPermission,
   module,
-  fallbackPath = '/'
 }) => {
   const { user } = useAuth();
   const { hasPermission, canAccess } = usePermissions();

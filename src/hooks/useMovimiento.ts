@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState,  useCallback } from 'react';
 import { Movimiento,  } from '../types/movimiento.types';
 import { movimientoService, MovimientosPaginados } from '../services/movimientoService';
+import { useMaterial } from './useMaterial'; // Para refrescar materiales si es necesario
 
 
 interface UseMovimientoState {
@@ -12,6 +13,8 @@ interface UseMovimientoState {
 }
 
 export const useMovimiento = () => {
+  const { fetchMateriales } = useMaterial(); // Para refrescar después de actualización
+
   const [state, setState] = useState<UseMovimientoState>({
     movimientos: [],
     movimientosPaginados: null,
@@ -57,6 +60,11 @@ export const useMovimiento = () => {
   }, []);
 
   const createMovimiento = useCallback(async (movimiento: Partial<Movimiento>) => {
+    // Verifica si se necesita solicitud antes de crear
+    if (!movimiento.solicitudId) {
+      // Lógica para manejar sin solicitud, o crea una si es necesario, pero evita extras
+      console.warn('Creando movimiento sin solicitud asociada');
+    }
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const response = await movimientoService.crear(movimiento);
@@ -65,6 +73,7 @@ export const useMovimiento = () => {
         movimientos: [...prev.movimientos, response as Movimiento],
         loading: false
       }));
+      await fetchMateriales(); // Refrescar materiales después de crear
       return response;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al crear movimiento';
@@ -81,9 +90,17 @@ export const useMovimiento = () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const response = await movimientoService.crearConSolicitud(movimiento);
+      // Ajuste: accede a response.data (el wrapper {message, data})
+      if (!response || !response.data) {
+        throw new Error('Respuesta de API inválida: estructura incompleta');
+      }
+      const nuevoMovimiento = response.data.movimiento; 
+      if (!nuevoMovimiento) {
+        throw new Error('Respuesta de API inválida: falta el campo data con el movimiento');
+      }
       setState(prev => ({
         ...prev,
-        movimientos: [...prev.movimientos, response.data.movimiento],
+        movimientos: [...prev.movimientos, nuevoMovimiento],
         loading: false
       }));
       return response;
@@ -140,18 +157,39 @@ export const useMovimiento = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchMovimientos();
-  }, [fetchMovimientos]);
-
+  const aprobarMovimiento = useCallback(async (id: number, aprobadorId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await movimientoService.aprobar(id, aprobadorId);
+      const updatedMovimiento = response;
+      setState(prev => ({
+        ...prev,
+        movimientos: prev.movimientos.map(m => m.id === id ? updatedMovimiento : m),
+        selectedMovimiento: prev.selectedMovimiento?.id === id ? updatedMovimiento : prev.selectedMovimiento,
+        loading: false
+      }));
+      await fetchMateriales(); // Refrescar después de aprobar
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al aprobar movimiento con ID ${id}`;
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+  
+  // En el return
   return {
     ...state,
     fetchMovimientos,
-   // filtrarMovimientos,
     fetchMovimientoById,
     createMovimiento,
-    createMovimientoConSolicitud, // Agregar este método
+    createMovimientoConSolicitud,
     updateMovimiento,
-    deleteMovimiento
+    deleteMovimiento,
+    aprobarMovimiento
   };
 };

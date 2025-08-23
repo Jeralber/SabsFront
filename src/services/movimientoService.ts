@@ -1,5 +1,6 @@
 import axios from "@/lib/axios";
 import { Movimiento } from '../types/movimiento.types';
+import { materialService } from './materialService'; // Importar para actualizar material
 
 const API_URL = '/movimientos';
 
@@ -12,8 +13,17 @@ export interface MovimientosPaginados {
 
 export const movimientoService = {
   crear: async (data: Partial<Movimiento>): Promise<Movimiento> => {
+    // Asegúrate de que data incluya descripcion y sitios si es necesario
     const response = await axios.post<Movimiento>(API_URL, data);
-    return response.data;
+    const nuevoMovimiento = response.data;
+
+    // Actualizar sitio del material si hay sitios en el movimiento
+    if (nuevoMovimiento.sitios && nuevoMovimiento.sitios.length > 0 && nuevoMovimiento.materialId) {
+      const nuevoSitioId = nuevoMovimiento.sitios[0].id; // Asumir primer sitio como destino
+      await materialService.update(nuevoMovimiento.materialId, { sitioId: nuevoSitioId });
+    }
+
+    return nuevoMovimiento;
   },
 
   obtenerTodos: async (): Promise<Movimiento[]> => {
@@ -36,7 +46,18 @@ export const movimientoService = {
     return response.data;
   },
 
+  aprobar: async (id: number, aprobadorId: number): Promise<Movimiento> => {
+    const response = await axios.post<Movimiento>(`${API_URL}/${id}/aprobar`, { aprobadorId });
+    const movimientoAprobado = response.data;
 
+    // Similar lógica para actualizar sitio al aprobar
+    if (movimientoAprobado.sitios && movimientoAprobado.sitios.length > 0 && movimientoAprobado.materialId) {
+      const nuevoSitioId = movimientoAprobado.sitios[0].id;
+      await materialService.update(movimientoAprobado.materialId, { sitioId: nuevoSitioId });
+    }
+
+    return movimientoAprobado;
+  },
 
   crearDesdeSolicitud: async (params: {
     materialId: number;

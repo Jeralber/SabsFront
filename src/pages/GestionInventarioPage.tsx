@@ -5,7 +5,7 @@ import { FileText, TrendingUp, Settings, List } from "lucide-react";
 import SolicitudPage from "./SolicitudPage";
 import MovimientoPage from "./MovimientoPage";
 import TipoMovimientoPage from "./TipoMovimientoPage";
-import DetallesPage from "./DetallesPage";
+import HistorialDetallesPage from "./HistorialDetallesPage";
 
 type InventorySection =
   | "solicitud"
@@ -70,7 +70,9 @@ const GestionInventarioPage: React.FC = () => {
         case "tipo-movimiento":
           return <TipoMovimientoPage />;
         case "detalles":
-          return <DetallesPage />;
+          return <HistorialDetallesPage />;
+
+
         default:
           return null;
       }

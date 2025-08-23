@@ -1,8 +1,9 @@
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
-import { Bars3Icon, BellIcon, ChevronDownIcon,  ArrowRightOnRectangleIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, BellIcon, ChevronDownIcon, ArrowRightOnRectangleIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useNotification } from "@/hooks/useNotification"; // Asegúrate de importar el hook
 
 interface NavbarProps {
   toggleSidebar: () => void;
@@ -12,6 +13,9 @@ export const Navbar = ({ toggleSidebar }: NavbarProps) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const { notifications, markAsRead } = useNotification(); // Usar el hook para obtener notificaciones
+  const unreadCount = notifications.filter(n => !n.leida).length; // Calcular conteo de no leídas
 
   return (
     <nav className="bg-green-600 dark:bg-green-800 shadow px-6 py-3 flex justify-between items-center fixed top-0 left-0 right-0 z-50">
@@ -29,15 +33,44 @@ export const Navbar = ({ toggleSidebar }: NavbarProps) => {
       <div className="flex items-center gap-4">
         <ThemeToggle />
         
-        <button
-          className="text-white hover:bg-green-700 p-2 rounded-md relative"
-          aria-label="Notificaciones"
-        >
-          <BellIcon className="h-6 w-6" />
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            3
-          </span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className="text-white hover:bg-green-700 p-2 rounded-md relative"
+            aria-label="Notificaciones"
+          >
+            <BellIcon className="h-6 w-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          
+          {isNotificationsOpen && (
+            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 max-h-96 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <p className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200">No hay notificaciones</p>
+              ) : (
+                notifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`px-4 py-2 text-sm ${notif.leida ? 'text-gray-500' : 'text-gray-700 dark:text-gray-200'} hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer`}
+                    onClick={() => {
+                      if (!notif.leida) markAsRead(notif.id);
+                      setIsNotificationsOpen(false);
+                      // Opcional: navegar a una página relacionada si es necesario
+                    }}
+                  >
+                    <p className="font-semibold">{notif.tipo}</p>
+                    <p>{notif.mensaje}</p>
+                    <p className="text-xs text-gray-400">{new Date(notif.fecha).toLocaleString()}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
         
         {user && (
           <div className="text-sm text-white dark:text-white text-right">

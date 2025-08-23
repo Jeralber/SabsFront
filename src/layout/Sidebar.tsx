@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { FaChevronDown, FaChevronRight, FaUserCog, FaChartBar, FaTable, FaHome, FaExchangeAlt, FaUsers, FaBuilding, FaMapMarkerAlt, FaGraduationCap, FaCity, FaBox } from 'react-icons/fa';
+import { FaBell } from 'react-icons/fa';  // Añadir este import si no existe
 
 
 interface SidebarProps {
@@ -48,6 +49,13 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
       path: '/administracion',
       requiredPermission: 'admin.access'
     },
+    
+  /* {
+      title: 'Módulos',
+      icon: <FaTable className="w-5 h-5" />,
+      path: '/modulos',
+      module: 'modulos'  
+    },*/
     {
       title: 'Models',
       icon: <FaTable className="w-5 h-5" />,
@@ -101,6 +109,12 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
           module: 'sitios'
         },
         {
+          title: 'Bodega',
+          icon: <FaBox className="w-5 h-5" />,
+          path: '/bodega',
+          module: 'bodega'
+        },
+        {
           title: 'Materiales',
           icon: <FaBox className="w-4 h-4" />,
           path: '/materiales',
@@ -115,10 +129,23 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
       module: 'inventario'
     },
     {
+      title: 'Gráficos',
+      icon: <FaChartBar className="w-5 h-5" />,
+      path: '/graficos',
+      module: 'graficos'
+    },
+    {
       title: 'Reportes',
       icon: <FaChartBar className="w-5 h-5" />,
       path: '/reportes',
       module: 'reportes'
+    },
+    // Dentro del array sidebarItems, agregar después de los items existentes, por ejemplo después de 'Reportes':
+    {
+      title: 'Notificaciones',
+      icon: <FaBell className="w-5 h-5" />,
+      path: '/notificaciones',
+      module: 'notificaciones'
     },
   ];
 

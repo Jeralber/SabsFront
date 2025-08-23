@@ -70,22 +70,13 @@ export function GenericForm<T>({
 
   const handleQuickCreate = async (field: FieldDefinition<T>) => {
     if (!field.onQuickCreate) return;
-
+  
     setIsCreating(true);
     try {
       const newItem = await field.onQuickCreate(quickCreateData);
-
-      // Actualizar las opciones del campo
-      const updatedField = {
-        ...field,
-        options: [
-          ...(field.options || []),
-          { value: newItem.id, label: newItem.label },
-        ],
-      };
-
+  
       setFormData((prev) => ({ ...prev, [field.name]: newItem.id }));
-
+  
       setShowQuickCreate(null);
       setQuickCreateData({});
     } catch (error) {

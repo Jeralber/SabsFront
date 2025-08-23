@@ -121,7 +121,7 @@ export const useDetalles = () => {
   const aprobarDetalle = useCallback(async (id: number, personaApruebaId: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.aprobar(id, personaApruebaId);
+      const response = await detallesService.aprobar(id, personaApruebaId, { noCrearSolicitud: true }); // Agregar flag si backend lo soporta
       const updatedDetalle = response.data as Detalles;
       setState(prev => ({
         ...prev,
@@ -190,6 +190,42 @@ export const useDetalles = () => {
     }
   }, []);
 
+  const entregarDetalle = useCallback(async (id: number, personaId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await detallesService.entregar(id, personaId);
+      const updatedDetalle = response.data as Detalles;
+      setState(prev => ({
+        ...prev,
+        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
+        loading: false
+      }));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al entregar detalle con ID ${id}`;
+      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+
+  const devolverDetalle = useCallback(async (id: number, personaId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await detallesService.devolver(id, personaId);
+      const updatedDetalle = response.data as Detalles;
+      setState(prev => ({
+        ...prev,
+        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
+        loading: false
+      }));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Error al devolver detalle con ID ${id}`;
+      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
+      throw new Error(errorMessage);
+    }
+  }, []);
+
   return {
     ...state,
     fetchDetalles,
@@ -200,6 +236,8 @@ export const useDetalles = () => {
     aprobarDetalle,
     rechazarDetalle,
     fetchHistorialCompleto,
-    fetchHistorialPorPersona
+    fetchHistorialPorPersona,
+    devolverDetalle,
+    entregarDetalle
   };
 };

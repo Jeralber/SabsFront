@@ -6,6 +6,8 @@ import { useMaterial } from '../hooks/useMaterial';
 import { useSolicitud } from '../hooks/useSolicitud';
 import { usePersona } from '../hooks/usePersona';
 import { useAuth } from '../hooks/useAuth';
+import { usePermissions } from '../hooks/usePermissions';
+
 import { Detalles } from '../types/detalles.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Package, Check, X, History, ExternalLink } from 'lucide-react';
@@ -133,6 +135,7 @@ const columns: Column<Detalles>[] = [
   }
 ];
 
+// Dentro del componente DetallesPage
 const DetallesPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -371,6 +374,19 @@ const DetallesPage: React.FC = () => {
     setEditingDetalle(null);
   };
 
+  const { canView } = usePermissions();
+
+  if (!canView('detalles')) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 bg-red-50 dark:bg-red-900/20 rounded-lg">
+        <X className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold text-red-600 dark:text-red-400">Acceso Denegado</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">No tienes permisos para ver los detalles.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Contacta al administrador si necesitas acceso.</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -450,107 +466,3 @@ const DetallesPage: React.FC = () => {
 export default DetallesPage;
 
 
-const tableColumns: Column<Detalles>[] = [
-  {
-    accessorKey: 'id',
-    header: 'ID',
-    sortable: true,
-    width: '80px'
-  },
-  {
-    accessorKey: 'material',
-    header: 'Material',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <div className="flex items-center gap-2">
-        <Package className="h-4 w-4 text-blue-500" />
-        <span className="font-medium">{row.material?.nombre || 'Sin material'}</span>
-      </div>
-    )
-  },
-  {
-    accessorKey: 'cantidad',
-    header: 'Cantidad',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="font-semibold text-blue-600">
-        {row.cantidad}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'solicitud',
-    header: 'Solicitud',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="text-sm text-gray-600">
-        {row.solicitud?.descripcion || 'Sin solicitud'}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'solicitud',
-    header: 'Solicitante',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="text-sm text-gray-600">
-        {row.solicitud?.solicitante ? `${row.solicitud.solicitante.nombre} ${row.solicitud.solicitante.apellido || ''}` : 'Sin asignar'}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'personaAprueba',
-    header: 'Aprobador',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="text-sm text-gray-600">
-        {row.personaAprueba ? `${row.personaAprueba.nombre} ${row.personaAprueba.apellido || ''}` : 'Sin asignar'}
-      </span>
-    )
-  },
-  
-  {
-    accessorKey: 'fechaCreacion',
-    header: 'Fecha Creación',
-    sortable: true,
-    isDate: true,
-    width: '150px'
-  },
-  {
-    accessorKey: 'fechaActualizacion',
-    header: 'Fecha Actualización',
-    sortable: true,
-    isDate: true,
-    width: '150px'
-  },
-  {
-    accessorKey: 'estado',
-    header: 'Estado',
-    sortable: true,
-    cell: (row: Detalles) => {
-      const getEstadoColor = (estado: string) => {
-        switch (estado) {
-          case 'APROBADO': return 'bg-green-100 text-green-800 border-green-200';
-          case 'RECHAZADO': return 'bg-red-100 text-red-800 border-red-200';
-          case 'PENDIENTE': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-          case 'ENTREGADO': return 'bg-blue-100 text-blue-800 border-blue-200';
-          case 'DEVUELTO': return 'bg-purple-100 text-purple-800 border-purple-200';
-          default: return 'bg-gray-100 text-gray-800 border-gray-200';
-        }
-      };
-      
-      return (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(row.estado)}`}>
-          {row.estado}
-        </span>
-      );
-    }
-  },
-  {
-    accessorKey: 'fechaActualizacion',
-    header: 'Fecha Actualización',
-    sortable: true,
-    isDate: true,
-    width: '150px'
-  }
-];

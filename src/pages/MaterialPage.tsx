@@ -8,6 +8,8 @@ import { useMaterial } from "../hooks/useMaterial";
 import { useTipoMaterial } from "../hooks/useTipoMaterial";
 import { useCategoriaMaterial } from "../hooks/useCategoriaMaterial";
 import { useUnidadMedida } from "../hooks/useUnidadMedida";
+import { useSitio } from "../hooks/useSitio"; // Asegúrate de importar el hook para sitios
+
 import { DataTable } from "../components/molecules/DataTable";
 import {
   GenericForm,
@@ -25,6 +27,7 @@ type Column<T> = {
 };
 
 const MaterialPage: React.FC = () => {
+  const { sitios } = useSitio();
   const navigate = useNavigate();
   const { materiales, error, createMaterial, updateMaterial, deleteMaterial } =
     useMaterial();
@@ -76,6 +79,13 @@ const MaterialPage: React.FC = () => {
       header: "Nombre",
       sortable: true,
     },
+    {
+      accessorKey: "sitio",
+      header: "Sitio",
+      sortable: false,
+      cell: (row: Material) => row.sitio?.nombre || "Sin sitio",
+    },
+
     {
       accessorKey: "descripcion",
       header: "Descripción",
@@ -201,6 +211,17 @@ const MaterialPage: React.FC = () => {
       type: "text",
       required: true,
     },
+    {
+      name: "sitioId",
+      label: "Sitio",
+      type: "select",
+      required: true,
+      options: sitios.map(sitio => ({
+        value: sitio.id,
+        label: sitio.nombre
+      })),
+    },
+
     {
       name: "stock",
       label: "Stock",

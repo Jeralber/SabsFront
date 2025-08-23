@@ -35,8 +35,8 @@ export const detallesService = {
     return response.data;
   },
 
-  aprobar: async (id: number, personaApruebaId: number): Promise<DetallesResponse> => {
-    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/aprobar`, { personaApruebaId });
+  aprobar: async (id: number, personaApruebaId: number, options?: { noCrearSolicitud?: boolean }) => {
+    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/aprobar`, { personaApruebaId, ...options });
     return response.data;
   },
 
@@ -56,6 +56,14 @@ export const detallesService = {
   },
   eliminar: async (id: number): Promise<DetallesResponse> => {
     const response = await axios.delete<DetallesResponse>(`${API_URL}/${id}`);
+    return response.data;
+  },
+  entregar: async (id: number, personaId: number): Promise<DetallesResponse> => {
+    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/entregar`, { personaId });
+    return response.data;
+  },
+  devolver: async (id: number, personaId: number): Promise<DetallesResponse> => {
+    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/devolver`, { personaId });
     return response.data;
   }
 };

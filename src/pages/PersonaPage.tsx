@@ -5,7 +5,7 @@ import { usePersona } from "@/hooks/usePersona";
 import { useRol } from "@/hooks/useRol";
 import { useFicha } from "@/hooks/useFicha";
 import { Persona } from "@/types/persona.types";
-import { Edit, Trash, User } from "lucide-react";
+import { Edit, Trash } from "lucide-react";
 
 export default function PersonaPage() {
   const {
