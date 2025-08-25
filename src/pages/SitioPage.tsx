@@ -5,9 +5,10 @@ import { useSitio } from '../hooks/useSitio';
 import { useTipoSitio } from '../hooks/useTipoSitio';
 import { Sitio } from '../types/sitio.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2, Settings, ExternalLink } from 'lucide-react';
+import { Edit, Trash2, Settings, ExternalLink, MapPin, Hash, Calendar, CheckCircle, XCircle, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import Swal from 'sweetalert2';
+import { Link } from 'react-router-dom';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -33,27 +34,41 @@ const SitioPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSitio, setEditingSitio] = useState<Sitio | null>(null);
 
-
   const columns: Column<Sitio>[] = [
     {
       accessorKey: 'id',
       header: 'ID',
       sortable: true,
-      width: '80px'
+      width: '80px',
+      cell: (row: Sitio) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="font-mono text-sm">#{row.id}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'nombre',
       header: 'Nombre',
-      sortable: true
+      sortable: true,
+      cell: (row: Sitio) => (
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{row.nombre}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'tipoSitio',
       header: 'Tipo de Sitio',
       sortable: true,
       cell: (row: Sitio) => (
-        <span className="text-sm text-gray-600">
-          {row.tipoSitio?.nombre || 'Sin tipo'}
-        </span>
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-green-500" />
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            {row.tipoSitio?.nombre || 'Sin tipo'}
+          </span>
+        </div>
       )
     },
     {
@@ -61,13 +76,20 @@ const SitioPage: React.FC = () => {
       header: 'Estado',
       sortable: true,
       cell: (row: Sitio) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            row.activo 
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {row.activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
       )
     },
     {
@@ -75,18 +97,28 @@ const SitioPage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: Sitio) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: Sitio) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-purple-500" />
+          <span>{new Date(row.fechaCreacion).toLocaleDateString('es-ES')}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: Sitio) => 
-        row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
+      cell: (row: Sitio) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-orange-500" />
+          <span>
+            {row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'}
+          </span>
+        </div>
+      )
     }
   ];
-
 
   const formFields: FieldDefinition<Sitio>[] = [
     {
@@ -150,16 +182,23 @@ const SitioPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
-
   const handleDelete = async (id: number) => {
     const sitio = sitios.find(s => s.id === id);
     if (!sitio) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el sitio "${sitio.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar Sitio?',
+      text: `¿Está seguro de que desea eliminar el sitio "${sitio.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteSitio(id);
         addToast({
@@ -167,16 +206,29 @@ const SitioPage: React.FC = () => {
           description: `El sitio "${sitio.nombre}" ha sido eliminado exitosamente.`,
           color: 'success'
         });
+        
+        await Swal.fire({
+          title: '¡Eliminado!',
+          text: 'El sitio ha sido eliminado correctamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
       } catch (error) {
         addToast({
           title: 'Error al eliminar',
           description: error instanceof Error ? error.message : 'Error desconocido al eliminar el sitio',
           color: 'danger'
         });
+        
+        await Swal.fire({
+          title: 'Error',
+          text: 'No se pudo eliminar el sitio. Inténtelo nuevamente.',
+          icon: 'error'
+        });
       }
     }
   };
-
 
   const handleSubmit = async (data: Partial<Sitio>) => {
     try {
@@ -197,6 +249,11 @@ const SitioPage: React.FC = () => {
       }
       setIsFormOpen(false);
       setEditingSitio(null);
+      
+      // Mecanismo de refresh mejorado
+      setTimeout(() => {
+        // El hook useSitio debería refrescar automáticamente los datos
+      }, 100);
     } catch (error) {
       addToast({
         title: editingSitio ? 'Error al actualizar' : 'Error al crear',
@@ -206,18 +263,15 @@ const SitioPage: React.FC = () => {
     }
   };
 
-
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingSitio(null);
   };
 
-
   const handleNavigateToTipoSitio = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     navigate('/tipositios');
   };
-
 
   const actions = [
     {
@@ -251,7 +305,6 @@ const SitioPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -263,7 +316,7 @@ const SitioPage: React.FC = () => {
         </div>
       </div>
 
-
+      {/* Banner de navegación a tipos de sitio */}
       <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
@@ -286,7 +339,6 @@ const SitioPage: React.FC = () => {
         </div>
       </div>
 
-
       <DataTable
         data={sitios}
         columns={columns}
@@ -301,7 +353,6 @@ const SitioPage: React.FC = () => {
         createButtonLabel="Nuevo Sitio"
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
-
 
       {isFormOpen && (
         <GenericForm

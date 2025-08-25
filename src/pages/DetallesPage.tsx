@@ -1,336 +1,220 @@
-import React, { useState } from 'react';
-import { DataTable } from '../components/molecules/DataTable';
-import { GenericForm, FieldDefinition } from '../components/molecules/GenericForm';
-import { useDetalles } from '../hooks/useDetalles';
-import { useMaterial } from '../hooks/useMaterial';
-import { useSolicitud } from '../hooks/useSolicitud';
-import { usePersona } from '../hooks/usePersona';
-import { useAuth } from '../hooks/useAuth';
-import { usePermissions } from '../hooks/usePermissions';
+import React, { useState, useEffect } from 'react';
+import { DataTable } from '@/components/molecules/DataTable';
+import { GenericForm, FieldDefinition } from '@/components/molecules/GenericForm';
+import { useDetalles } from '@/hooks/useDetalles';
+import { useMaterial } from '@/hooks/useMaterial';
+import { usePersona } from '@/hooks/usePersona';
+import { useSolicitud } from '@/hooks/useSolicitud';
+import { Detalles } from '@/types/detalles.types';
+import { CreateDetallesDto } from '@/services/detallesService'; // Agregar este import
+import { Package, FileText, User, Calendar } from 'lucide-react';
 
-import { Detalles } from '../types/detalles.types';
-import { addToast } from '@heroui/react';
-import { Edit, Trash2, Package, Check, X, History, ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-
-type Column<T> = {
-  accessorKey: keyof T;
-  header: string;
-  cell?: (row: T) => React.ReactNode;
-  sortable?: boolean;
-  isDate?: boolean;
-  width?: string;
-};
-
-const columns: Column<Detalles>[] = [
-  {
-    accessorKey: 'id',
-    header: 'ID',
-    sortable: true,
-    width: '80px'
-  },
-  {
-    accessorKey: 'material',
-    header: 'Material',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <div className="flex items-center gap-2">
-        <Package className="h-4 w-4 text-blue-500" />
-        <span className="font-medium">{row.material?.nombre || 'Sin material'}</span>
-      </div>
-    )
-  },
-  {
-    accessorKey: 'cantidad',
-    header: 'Cantidad',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="font-semibold text-blue-600">
-        {row.cantidad}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'solicitud',
-    header: 'Solicitud',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="text-sm text-gray-600">
-        {row.solicitud?.descripcion || 'Sin solicitud'}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'solicitud',
-    header: 'Solicitante',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="text-sm text-gray-600">
-        {row.solicitud?.solicitante ? `${row.solicitud.solicitante.nombre} ${row.solicitud.solicitante.apellido || ''}` : 'Sin asignar'}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'personaAprueba',
-    header: 'Aprobador',
-    sortable: true,
-    cell: (row: Detalles) => (
-      <span className="text-sm text-gray-600">
-        {row.personaAprueba ? `${row.personaAprueba.nombre} ${row.personaAprueba.apellido || ''}` : 'Sin asignar'}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'estado',
-    header: 'Estado',
-    sortable: true,
-    cell: (row: Detalles) => {
-      const getEstadoBadge = (estado: string) => {
-        switch (estado) {
-          case 'PENDIENTE':
-            return (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full mr-1.5"></div>
-                Pendiente
-              </span>
-            );
-          case 'APROBADO':
-            return (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                <Check className="w-3 h-3 mr-1" />
-                Aprobado
-              </span>
-            );
-          case 'RECHAZADO':
-            return (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-                <X className="w-3 h-3 mr-1" />
-                Rechazado
-              </span>
-            );
-          default:
-            return (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">
-                {estado}
-              </span>
-            );
-        }
-      };
-      return getEstadoBadge(row.estado);
-    }
-  },
-  {
-    accessorKey: 'fechaCreacion',
-    header: 'Fecha Creación',
-    sortable: true,
-    isDate: true,
-    width: '150px'
-  },
-  {
-    accessorKey: 'fechaActualizacion',
-    header: 'Fecha Actualización',
-    sortable: true,
-    isDate: true,
-    width: '150px'
-  }
-];
-
-// Dentro del componente DetallesPage
 const DetallesPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
   const {
     detalles,
     loading,
     error,
+    fetchDetalles,
     createDetalle,
     updateDetalle,
     deleteDetalle,
     aprobarDetalle,
     rechazarDetalle
   } = useDetalles();
-
-  const { materiales } = useMaterial();
-  const { solicitudes } = useSolicitud();
-  const { personas } = usePersona();
-
+  
+  const { materiales, fetchMateriales } = useMaterial();
+  const { personas, fetchPersonas } = usePersona();
+  const { solicitudes, fetchSolicitudes } = useSolicitud();
+  
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState<Detalles | null>(null);
 
-  const handleAprobar = async (detalle: Detalles) => {
-    if (!user?.usuario.id) {
-      addToast({
-        title: 'Error de autenticación',
-        description: 'No se pudo identificar al usuario. Por favor, inicie sesión nuevamente.',
-        color: 'danger'
-      });
-      return;
-    }
+  useEffect(() => {
+    fetchDetalles();
+    fetchMateriales();
+    fetchPersonas();
+    fetchSolicitudes();
+  }, []);
 
-    if (detalle.estado !== 'PENDIENTE') {
-      addToast({
-        title: 'Error de validación',
-        description: 'Solo se pueden aprobar detalles en estado PENDIENTE.',
-        color: 'warning'
-      });
-      return;
-    }
-
-    try {
-      console.log('=== INICIANDO APROBACIÓN DESDE FRONTEND ===');
-      console.log('Usuario que aprueba:', user.usuario.id, user.usuario.nombre);
-      console.log('Detalle a aprobar:', detalle.id, 'Estado actual:', detalle.estado);
-      
-      await aprobarDetalle(detalle.id, user.usuario.id);
-      
-      addToast({
-        title: 'Aprobación exitosa',
-        description: `Detalle #${detalle.id} aprobado correctamente. El movimiento ha sido ejecutado y el stock actualizado.`,
-        color: 'success'
-      });
-      
-      console.log('=== APROBACIÓN COMPLETADA DESDE FRONTEND ===');
-    } catch (error) {
-      console.error('Error en aprobación:', error);
-      addToast({
-        title: 'Error al aprobar',
-        description: error instanceof Error ? error.message : 'Error desconocido al aprobar el detalle',
-        color: 'danger'
-      });
-    }
-  };
-
-  const handleRechazar = async (detalle: Detalles) => {
-    if (!user?.usuario.id) {
-      addToast({
-        title: 'Error de autenticación',
-        description: 'No se pudo identificar al usuario. Por favor, inicie sesión nuevamente.',
-        color: 'danger'
-      });
-      return;
-    }
-
-    if (detalle.estado !== 'PENDIENTE') {
-      addToast({
-        title: 'Error de validación',
-        description: 'Solo se pueden rechazar detalles en estado PENDIENTE.',
-        color: 'warning'
-      });
-      return;
-    }
-
-    try {
-      console.log('=== INICIANDO RECHAZO DESDE FRONTEND ===');
-      console.log('Usuario que rechaza:', user.usuario.id, user.usuario.nombre);
-      console.log('Detalle a rechazar:', detalle.id, 'Estado actual:', detalle.estado);
-      
-      await rechazarDetalle(detalle.id, user.usuario.id);
-      
-      addToast({
-        title: 'Rechazo exitoso',
-        description: `Detalle #${detalle.id} rechazado correctamente.`,
-        color: 'success'
-      });
-      
-      console.log('=== RECHAZO COMPLETADO DESDE FRONTEND ===');
-    } catch (error) {
-      console.error('Error en rechazo:', error);
-      addToast({
-        title: 'Error al rechazar',
-        description: error instanceof Error ? error.message : 'Error desconocido al rechazar el detalle',
-        color: 'danger'
-      });
-    }
-  };
-
-  const handleEdit = (detalle: Detalles) => {
-    setEditingDetalle(detalle);
-    setIsFormOpen(true);
-  };
-
-  const handleDelete = async (detalle: Detalles) => {
-    try {
-      await deleteDetalle(detalle.id);
-      addToast({
-        title: 'Detalle eliminado',
-        description: `El detalle ha sido eliminado exitosamente.`,
-        color: 'success'
-      });
-    } catch (error) {
-      addToast({
-        title: 'Error al eliminar',
-        description: error instanceof Error ? error.message : 'Error desconocido',
-        color: 'danger'
-      });
-    }
-  };
-
-  const actions = [
+  const columns = [
     {
-      icon: <Check className="h-4 w-4" />,
-      label: 'Aprobar',
-      onClick: handleAprobar,
-      color: 'success' as const,
-      condition: (row: Detalles) => row.estado === 'PENDIENTE'
+      accessorKey: "id" as keyof Detalles,
+      header: "ID",
+      sortable: true,
+      width: "80px",
     },
     {
-      icon: <X className="h-4 w-4" />,
-      label: 'Rechazar',
-      onClick: handleRechazar,
-      color: 'warning' as const,
-      condition: (row: Detalles) => row.estado === 'PENDIENTE'
+      accessorKey: "materialId" as keyof Detalles, // Cambiar de "material" a "materialId"
+      header: "Material",
+      sortable: true,
+      cell: (row: Detalles) => (
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-blue-500" />
+          <div>
+            <span className="font-medium">{row.material?.nombre || "Sin material"}</span>
+            <p className="text-xs text-gray-500">{row.material?.codigo}</p>
+          </div>
+        </div>
+      ),
     },
     {
-      icon: <Edit className="h-4 w-4" />,
-      label: 'Editar',
-      onClick: handleEdit,
-      color: 'primary' as const,
-      condition: (row: Detalles) => row.estado === 'PENDIENTE'
+      accessorKey: "cantidad" as keyof Detalles,
+      header: "Cantidad",
+      sortable: true,
+      cell: (row: Detalles) => (
+        <span className="font-semibold text-blue-600">{row.cantidad}</span>
+      ),
     },
     {
-      icon: <Trash2 className="h-4 w-4" />,
-      label: 'Eliminar',
-      onClick: handleDelete,
-      color: 'danger' as const,
-      condition: (row: Detalles) => row.estado === 'PENDIENTE'
-    }
+      accessorKey: "accion" as keyof Detalles,
+      header: "Acción",
+      sortable: true,
+      cell: (row: Detalles) => (
+        <span className="text-sm text-gray-600">{row.accion || "Sin descripción"}</span>
+      ),
+    },
+    {
+      accessorKey: "numeroFactura" as keyof Detalles,
+      header: "N° Factura",
+      sortable: true,
+      cell: (row: Detalles) => (
+        <div className="flex items-center gap-1">
+          <FileText className="h-3 w-3 text-gray-400" />
+          <span className="text-sm">{row.numeroFactura || "N/A"}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "solicitanteId" as keyof Detalles, // Cambiar de "solicitante" a "solicitanteId"
+      header: "Solicitante",
+      sortable: true,
+      cell: (row: Detalles) => (
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-green-500" />
+          <span className="text-sm">
+            {row.solicitante 
+              ? `${row.solicitante.nombre} ${row.solicitante.apellido || ""}` 
+              : "Sin solicitante"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "estado" as keyof Detalles,
+      header: "Estado",
+      sortable: true,
+      cell: (row: Detalles) => {
+        const getStatusColor = (estado: string) => {
+          switch (estado) {
+            case 'PENDIENTE': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+            case 'APROBADO': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+            case 'RECHAZADO': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+            case 'ENTREGADO': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+            case 'DEVUELTO': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+          }
+        };
+        
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(row.estado)}`}>
+            {row.estado}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "fechaCreacion" as keyof Detalles,
+      header: "Fecha Creación",
+      sortable: true,
+      isDate: true,
+      cell: (row: Detalles) => (
+        <div className="flex items-center gap-1">
+          <Calendar className="h-3 w-3 text-gray-400" />
+          <span className="text-sm">
+            {new Date(row.fechaCreacion).toLocaleDateString("es-ES")}
+          </span>
+        </div>
+      ),
+    },
   ];
 
   const formFields: FieldDefinition<Detalles>[] = [
     {
-      name: 'materialId',
-      label: 'Material',
-      type: 'select',
+      name: "materialId",
+      label: "Material",
+      type: "select",
       required: true,
-      options: materiales.map(material => ({
+      options: materiales.map((material) => ({
         value: material.id,
-        label: material.nombre
-      }))
+        label: `${material.nombre} (${material.codigo})`,
+      })),
     },
     {
-      name: 'cantidad',
-      label: 'Cantidad',
-      type: 'number',
-      required: true
+      name: "cantidad",
+      label: "Cantidad",
+      type: "number",
+      required: true,
     },
     {
-      name: 'solicitudId',
-      label: 'Solicitud',
-      type: 'select',
-      options: solicitudes.map(solicitud => ({
-        value: solicitud.id,
-        label: solicitud.descripcion
-      }))
+      name: "accion",
+      label: "Descripción de la Acción",
+      type: "text",
+      required: false,
     },
     {
-      name: 'personaApruebaId',
-      label: 'Persona que Aprueba',
-      type: 'select',
-      options: personas.map(persona => ({
+      name: "numeroFactura",
+      label: "Número de Factura",
+      type: "text",
+      required: false,
+    },
+    {
+      name: "solicitanteId",
+      label: "Solicitante",
+      type: "select",
+      required: false,
+      options: personas.map((persona) => ({
         value: persona.id,
-        label: `${persona.nombre} ${persona.apellido || ''}`
-      }))
-    }
+        label: `${persona.nombre} ${persona.apellido || ""}`,
+      })),
+    },
+    {
+      name: "solicitudId",
+      label: "Solicitud",
+      type: "select",
+      required: true,
+      options: solicitudes.map((solicitud) => ({
+        value: solicitud.id,
+        label: solicitud.descripcion,
+      })),
+    },
+    {
+      name: "estado",
+      label: "Estado",
+      type: "select",
+      required: false,
+      options: [
+        { value: 'PENDIENTE', label: 'Pendiente' },
+        { value: 'APROBADO', label: 'Aprobado' },
+        { value: 'RECHAZADO', label: 'Rechazado' },
+        { value: 'ENTREGADO', label: 'Entregado' },
+        { value: 'DEVUELTO', label: 'Devuelto' },
+      ],
+    },
+  ];
+
+  const actions = [
+    {
+      label: "Aprobar",
+      onClick: (detalle: Detalles) => handleAprobar(detalle.id),
+      variant: "primary" as const,
+      show: (detalle: Detalles) => detalle.estado === 'PENDIENTE',
+    },
+    {
+      label: "Rechazar",
+      onClick: (detalle: Detalles) => handleRechazar(detalle.id),
+      variant: "danger" as const,
+      show: (detalle: Detalles) => detalle.estado === 'PENDIENTE',
+    },
   ];
 
   const handleCreate = () => {
@@ -338,34 +222,32 @@ const DetallesPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
+  const handleEdit = (detalle: Detalles) => {
+    setEditingDetalle(detalle);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteDetalle(id);
+      await fetchDetalles();
+    } catch (error) {
+      console.error('Error al eliminar detalle:', error);
+    }
+  };
+
   const handleSubmit = async (data: Partial<Detalles>) => {
     try {
       if (editingDetalle) {
         await updateDetalle(editingDetalle.id, data);
-        addToast({
-          title: 'Detalle actualizado',
-          description: `El detalle ha sido actualizado exitosamente.`,
-          color: 'success'
-        });
       } else {
-        await createDetalle({
-          ...data,
-          cantidad: data.cantidad || 0
-        } as Detalles);
-        addToast({
-          title: 'Detalle creado',
-          description: `El detalle ha sido creado exitosamente.`,
-          color: 'success'
-        });
+        await createDetalle(data as CreateDetallesDto);
       }
+      await fetchDetalles();
       setIsFormOpen(false);
       setEditingDetalle(null);
     } catch (error) {
-      addToast({
-        title: editingDetalle ? 'Error al actualizar' : 'Error al crear',
-        description: error instanceof Error ? error.message : 'Error desconocido',
-        color: 'danger'
-      });
+      console.error('Error al guardar detalle:', error);
     }
   };
 
@@ -374,33 +256,33 @@ const DetallesPage: React.FC = () => {
     setEditingDetalle(null);
   };
 
-  const { canView } = usePermissions();
+  const handleAprobar = async (id: number) => {
+    try {
+      // Aquí deberías obtener el ID de la persona que aprueba
+      const personaApruebaId = 1; // Esto debería venir del contexto de autenticación
+      await aprobarDetalle(id, personaApruebaId);
+      await fetchDetalles();
+    } catch (error) {
+      console.error('Error al aprobar detalle:', error);
+    }
+  };
 
-  if (!canView('detalles')) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 bg-red-50 dark:bg-red-900/20 rounded-lg">
-        <X className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-bold text-red-600 dark:text-red-400">Acceso Denegado</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">No tienes permisos para ver los detalles.</p>
-        <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Contacta al administrador si necesitas acceso.</p>
-      </div>
-    );
-  }
+  const handleRechazar = async (id: number) => {
+    try {
+      const personaApruebaId = 1; // Esto debería venir del contexto de autenticación
+      await rechazarDetalle(id, personaApruebaId);
+      await fetchDetalles();
+    } catch (error) {
+      console.error('Error al rechazar detalle:', error);
+    }
+  };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg text-gray-600 dark:text-gray-400">Cargando detalles...</div>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-64">Cargando...</div>;
   }
 
   if (error) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg text-red-600 dark:text-red-400">Error: {error}</div>
-      </div>
-    );
+    return <div className="text-red-500 text-center">Error: {error}</div>;
   }
 
   return (
@@ -411,40 +293,20 @@ const DetallesPage: React.FC = () => {
             Gestión de Detalles
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Administra los detalles de las solicitudes de material del sistema
+            Administra los detalles de solicitudes con información completa
           </p>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Historial de Detalles</h3>
-            <p className="text-blue-100 mb-4">
-              Consulta el historial completo de detalles procesados en el sistema
-            </p>
-            <button
-              onClick={() => navigate('/historial-detalles')}
-              className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-200 font-medium"
-            >
-              <History className="w-4 h-4 mr-2" />
-              Ver Historial Completo
-              <ExternalLink className="w-4 h-4 ml-2" />
-            </button>
-          </div>
-          <div className="hidden md:block">
-            <History className="w-16 h-16 text-blue-200" />
-          </div>
         </div>
       </div>
 
       <DataTable
         data={detalles}
         columns={columns}
+        title="Detalles de Solicitudes"
         actions={actions}
+        onEdit={handleEdit}
         onCreate={handleCreate}
+        onDelete={handleDelete}
         getRowId={(detalle) => detalle.id}
-        title="Lista de Detalles"
         searchPlaceholder="Buscar detalles..."
         emptyMessage="No se encontraron detalles"
         createButtonLabel="Nuevo Detalle"
@@ -452,9 +314,16 @@ const DetallesPage: React.FC = () => {
       />
 
       {isFormOpen && (
-        <GenericForm
+        <GenericForm<Detalles>
           fields={formFields}
-          initialValues={editingDetalle || { cantidad: 0 }}
+          initialValues={
+            editingDetalle || {
+              cantidad: 0,
+              estado: 'PENDIENTE',
+              materialId: 0,
+              solicitudId: 0,
+            }
+          }
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />
@@ -464,5 +333,3 @@ const DetallesPage: React.FC = () => {
 };
 
 export default DetallesPage;
-
-

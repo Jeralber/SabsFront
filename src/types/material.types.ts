@@ -4,6 +4,7 @@ import { CategoriaMaterial } from './categoria-material.types';
 import { Detalles } from './detalles.types';
 import { Movimiento } from './movimiento.types';
 import { Sitio } from './sitio.types';
+import { Persona } from './persona.types';
 
 export interface Material {
   id: number;
@@ -20,6 +21,11 @@ export interface Material {
   unidadMedidaId?: number;
   categoriaMaterialId?: number;
   sitioId?: number;
+  registradoPorId?: number;
+  
+  esOriginal: boolean;
+  requiereDevolucion: boolean;
+  materialOrigenId?: number;
   
   // Relaciones
   tipoMaterial?: TipoMaterial;
@@ -28,4 +34,6 @@ export interface Material {
   detalles?: Detalles[];
   movimientos?: Movimiento[];
   sitio?: Sitio;
+  registradoPor?: Persona;
+  materialOrigen?: Material; 
 }

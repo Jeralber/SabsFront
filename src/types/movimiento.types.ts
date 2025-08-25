@@ -13,12 +13,12 @@ export interface Movimiento {
   personaId: number;
   solicitudId?: number;
   detalleId?: number;
+  sitioId?: number;
   activo: boolean;
-  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'ENTREGADO' | 'DEVUELTO';
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'PRESTADO' | 'DEVUELTO';
   fechaCreacion: Date;
   fechaActualizacion: Date;
   descripcion?: string;
-  sitios?: Sitio[];
   
   // Relaciones
   material: Material;
@@ -27,4 +27,5 @@ export interface Movimiento {
   solicitud?: Solicitud;
   detalle?: Detalles;
   sitio?: Sitio;
+  // Eliminar sitios?: Sitio[]; ya que es inconsistente
 }

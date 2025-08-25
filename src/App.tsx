@@ -32,6 +32,7 @@ import ReportesPage from "./pages/ReportesPage";
 import GraficosPage from "./pages/GraficosPage";
 import ModulosPage from "./pages/ModulosPage";
 import NotificacionesPage from "./pages/NotificacionesPage";
+import { PasswordRecoveryPage } from "@/pages/PasswordRecoveryPage";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password/:token" element={<PasswordRecoveryPage />} />
           <Route
             path="/"
             element={

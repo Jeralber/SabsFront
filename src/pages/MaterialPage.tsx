@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { addToast } from "@heroui/react";
-import { Edit, Trash2, ExternalLink, Package, Tag, Ruler } from "lucide-react";
+import { Edit, Trash2, ExternalLink, Package, Tag, Ruler, Link2, Hash, FileText, Archive, Calendar, CheckCircle, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Swal from 'sweetalert2';
 import { Material } from "../types/material.types";
 
 import { useMaterial } from "../hooks/useMaterial";
@@ -27,15 +28,15 @@ type Column<T> = {
 };
 
 const MaterialPage: React.FC = () => {
-  const { sitios } = useSitio();
+  const { sitios, fetchSitios } = useSitio();
   const navigate = useNavigate();
-  const { materiales, error, createMaterial, updateMaterial, deleteMaterial } =
+  const { materiales, error, createMaterial, updateMaterial, deleteMaterial, fetchMateriales } =
     useMaterial();
 
-  const { tiposMaterial, createTipoMaterial } = useTipoMaterial();
-  const { categoriasMaterial, createCategoriaMaterial } =
+  const { tiposMaterial, fetchTiposMaterial } = useTipoMaterial();
+  const { categoriasMaterial, fetchCategoriasMaterial } =
     useCategoriaMaterial();
-  const { unidadesMedida, createUnidadMedida } = useUnidadMedida();
+  const { unidadesMedida, fetchUnidadesMedida } = useUnidadMedida();
 
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -67,29 +68,87 @@ const MaterialPage: React.FC = () => {
       accessorKey: "id",
       header: "ID",
       sortable: true,
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="font-mono text-sm">{row.id}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "codigo",
       header: "Código",
       sortable: true,
       width: "120px",
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-blue-500" />
+          <span className="font-mono text-sm">{row.codigo}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "nombre",
       header: "Nombre",
       sortable: true,
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-green-500" />
+          <span className="font-medium">{row.nombre}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "esOriginal",
+      header: "Tipo",
+      sortable: true,
+      width: "120px",
+      cell: (row: Material) => {
+        const esOriginal = row.esOriginal !== false;
+        return (
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+              esOriginal
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                : "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+            }`}
+          >
+            {esOriginal ? (
+              <>
+                <Package className="h-3 w-3" />
+                Original
+              </>
+            ) : (
+              <>
+                <Link2 className="h-3 w-3" />
+                Prestado
+              </>
+            )}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "sitio",
       header: "Sitio",
       sortable: false,
-      cell: (row: Material) => row.sitio?.nombre || "Sin sitio",
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Archive className="h-4 w-4 text-purple-500" />
+          <span>{row.sitio?.nombre || "Sin sitio"}</span>
+        </div>
+      ),
     },
-
     {
       accessorKey: "descripcion",
       header: "Descripción",
       sortable: true,
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-gray-500" />
+          <span className="truncate max-w-xs" title={row.descripcion}>{row.descripcion}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "stock",
@@ -97,7 +156,7 @@ const MaterialPage: React.FC = () => {
       sortable: true,
       cell: (row: Material) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
             row.stock > 10
               ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
               : row.stock > 0
@@ -105,38 +164,56 @@ const MaterialPage: React.FC = () => {
                 : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
           }`}
         >
+          <Package className="h-3 w-3" />
           {row.stock}
         </span>
       ),
     },
-
     {
       accessorKey: "tipoMaterial",
       header: "Tipo",
       sortable: false,
-      cell: (row: Material) => row.tipoMaterial?.tipo || "Sin tipo",
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-indigo-500" />
+          <span>{row.tipoMaterial?.tipo || "Sin tipo"}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "categoriaMaterial",
       header: "Categoría",
       sortable: false,
-      cell: (row: Material) =>
-        row.categoriaMaterial?.categoria || "Sin categoría",
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-pink-500" />
+          <span>{row.categoriaMaterial?.categoria || "Sin categoría"}</span>
+        </div>
+      ),
     },
-
     {
       accessorKey: "caduca",
       header: "Caduca",
       sortable: true,
       cell: (row: Material) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
             row.caduca
               ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
               : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
           }`}
         >
-          {row.caduca ? "Sí" : "No"}
+          {row.caduca ? (
+            <>
+              <Calendar className="h-3 w-3" />
+              Sí
+            </>
+          ) : (
+            <>
+              <XCircle className="h-3 w-3" />
+              No
+            </>
+          )}
         </span>
       ),
     },
@@ -144,17 +221,28 @@ const MaterialPage: React.FC = () => {
       accessorKey: "unidadMedida",
       header: "Unidad de Medida",
       sortable: false,
-      cell: (row: Material) => row.unidadMedida?.unidad || "Sin unidad",
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Ruler className="h-4 w-4 text-orange-500" />
+          <span>{row.unidadMedida?.unidad || "Sin unidad"}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "fechaVencimiento",
       header: "Fecha Vencimiento",
       sortable: true,
       isDate: true,
-      cell: (row: Material) =>
-        row.fechaVencimiento
-          ? new Date(row.fechaVencimiento).toLocaleDateString("es-ES")
-          : "N/A",
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-red-500" />
+          <span>
+            {row.fechaVencimiento
+              ? new Date(row.fechaVencimiento).toLocaleDateString("es-ES")
+              : "N/A"}
+          </span>
+        </div>
+      ),
     },
     {
       accessorKey: "activo",
@@ -162,13 +250,23 @@ const MaterialPage: React.FC = () => {
       sortable: true,
       cell: (row: Material) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
             row.activo
               ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
               : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
           }`}
         >
-          {row.activo ? "Activo" : "Inactivo"}
+          {row.activo ? (
+            <>
+              <CheckCircle className="h-3 w-3" />
+              Activo
+            </>
+          ) : (
+            <>
+              <XCircle className="h-3 w-3" />
+              Inactivo
+            </>
+          )}
         </span>
       ),
     },
@@ -177,18 +275,28 @@ const MaterialPage: React.FC = () => {
       header: "Fecha Creación",
       sortable: true,
       isDate: true,
-      cell: (row: Material) =>
-        new Date(row.fechaCreacion).toLocaleDateString("es-ES"),
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-blue-500" />
+          <span>{new Date(row.fechaCreacion).toLocaleDateString("es-ES")}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "fechaActualizacion",
       header: "Última Actualización",
       sortable: true,
       isDate: true,
-      cell: (row: Material) =>
-        row.fechaActualizacion
-          ? new Date(row.fechaActualizacion).toLocaleDateString("es-ES")
-          : "N/A",
+      cell: (row: Material) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-green-500" />
+          <span>
+            {row.fechaActualizacion
+              ? new Date(row.fechaActualizacion).toLocaleDateString("es-ES")
+              : "N/A"}
+          </span>
+        </div>
+      ),
     },
   ];
 
@@ -221,7 +329,6 @@ const MaterialPage: React.FC = () => {
         label: sitio.nombre
       })),
     },
-
     {
       name: "stock",
       label: "Stock",
@@ -237,36 +344,6 @@ const MaterialPage: React.FC = () => {
         value: unidad.id,
         label: unidad.unidad,
       })),
-      allowQuickCreate: true,
-      quickCreateTitle: "Crear Nueva Unidad de Medida",
-      quickCreateFields: [
-        {
-          name: "unidad",
-          label: "Unidad",
-          type: "text",
-          required: true,
-        },
-        {
-          name: "activo",
-          label: "Activo",
-          type: "checkbox",
-          required: false,
-        },
-      ],
-      onQuickCreate: async (data) => {
-        const response = await createUnidadMedida({
-          ...data,
-          activo: data.activo ?? true,
-        });
-        const newUnidad = response.data;
-        if (!newUnidad || Array.isArray(newUnidad)) {
-          throw new Error("Error al crear la unidad de medida");
-        }
-        return {
-          id: newUnidad.id,
-          label: newUnidad.unidad,
-        };
-      },
     },
     {
       name: "tipoMaterialId",
@@ -277,36 +354,6 @@ const MaterialPage: React.FC = () => {
         value: tipo.id,
         label: tipo.tipo,
       })),
-      allowQuickCreate: true,
-      quickCreateTitle: "Crear Nuevo Tipo de Material",
-      quickCreateFields: [
-        {
-          name: "tipo",
-          label: "Tipo",
-          type: "text",
-          required: true,
-        },
-        {
-          name: "activo",
-          label: "Activo",
-          type: "checkbox",
-          required: false,
-        },
-      ],
-      onQuickCreate: async (data) => {
-        const response = await createTipoMaterial({
-          ...data,
-          activo: data.activo ?? true,
-        });
-        const newTipo = response.data;
-        if (!newTipo || Array.isArray(newTipo)) {
-          throw new Error("Error al crear el tipo de material");
-        }
-        return {
-          id: newTipo.id,
-          label: newTipo.tipo,
-        };
-      },
     },
     {
       name: "categoriaMaterialId",
@@ -317,36 +364,6 @@ const MaterialPage: React.FC = () => {
         value: categoria.id,
         label: categoria.categoria,
       })),
-      allowQuickCreate: true,
-      quickCreateTitle: "Crear Nueva Categoría de Material",
-      quickCreateFields: [
-        {
-          name: "categoria",
-          label: "Categoría",
-          type: "text",
-          required: true,
-        },
-        {
-          name: "activo",
-          label: "Activo",
-          type: "checkbox",
-          required: false,
-        },
-      ],
-      onQuickCreate: async (data) => {
-        const response = await createCategoriaMaterial({
-          ...data,
-          activo: data.activo ?? true,
-        });
-        const newCategoria = response.data;
-        if (!newCategoria || Array.isArray(newCategoria)) {
-          throw new Error("Error al crear la categoría de material");
-        }
-        return {
-          id: newCategoria.id,
-          label: newCategoria.categoria,
-        };
-      },
     },
     {
       name: "caduca",
@@ -382,13 +399,22 @@ const MaterialPage: React.FC = () => {
     const material = materiales.find((m) => m.id === id);
     if (!material) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el material "${material.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar material?',
+      text: `¿Está seguro de que desea eliminar el material "${material.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteMaterial(id);
+        await fetchMateriales();
         addToast({
           title: "Material eliminado",
           description: `El material "${material.nombre}" ha sido eliminado exitosamente.`,
@@ -424,6 +450,11 @@ const MaterialPage: React.FC = () => {
           color: "success",
         });
       }
+      await fetchMateriales();
+      await fetchSitios();
+      await fetchTiposMaterial();
+      await fetchCategoriasMaterial();
+      await fetchUnidadesMedida();
       setIsFormOpen(false);
       setEditingMaterial(null);
     } catch (error) {

@@ -7,7 +7,8 @@ import {
 import { useTipoMovimiento } from "../hooks/useTipoMovimiento";
 import { TipoMovimiento } from "../types/tipo-movimiento.types";
 import { addToast } from "@heroui/react";
-import { Edit, Trash2, ArrowUpDown } from "lucide-react";
+import { Edit, Trash2, ArrowUpDown, Shield } from "lucide-react";
+import { usePermissions } from "../hooks/usePermissions";
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -19,6 +20,7 @@ type Column<T> = {
 };
 
 const TipoMovimientoPage: React.FC = () => {
+  const { canAccess } = usePermissions();
   const {
     tiposMovimiento,
     loading,
@@ -31,6 +33,23 @@ const TipoMovimientoPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTipoMovimiento, setEditingTipoMovimiento] =
     useState<TipoMovimiento | null>(null);
+
+  // Verificar si el usuario tiene permisos de administrador
+  if (!canAccess('tipo-movimiento')) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <Shield className="h-16 w-16 text-red-500" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Acceso Restringido
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Solo los administradores pueden acceder a la gestión de tipos de movimiento.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const columns: Column<TipoMovimiento>[] = [
     {
@@ -216,7 +235,7 @@ const TipoMovimientoPage: React.FC = () => {
             Gestión de Tipos de Movimiento
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Administra los tipos de movimiento del sistema
+            Administra los tipos de movimiento del sistema (Solo Administradores)
           </p>
         </div>
       </div>

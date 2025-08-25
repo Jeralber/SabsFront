@@ -5,7 +5,7 @@ import { Movimiento } from './movimiento.types';
 export interface Solicitud {
   id: number;
   descripcion: string;
-  estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'ENTREGADA' | 'DEVUELTA';
+  estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'PRESTADO' | 'DEVUELTA';
   fechaCreacion: Date;
   fechaActualizacion: Date;
   

@@ -5,7 +5,9 @@ import { useSede } from '../hooks/useSede';
 import { useCentro } from '../hooks/useCentro';
 import { Sede } from '../types/sede.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2, Building } from 'lucide-react';
+import { Edit, Trash2, Building, MapPin, Hash, Calendar, Clock, CheckCircle, XCircle, Settings, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -17,12 +19,14 @@ type Column<T> = {
 };
 
 const SedePage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     sedes,
     error,
     createSede,
     updateSede,
-    deleteSede
+    deleteSede,
+    fetchSedes
   } = useSede();
 
   const { centros } = useCentro();
@@ -35,7 +39,13 @@ const SedePage: React.FC = () => {
       accessorKey: 'id',
       header: 'ID',
       sortable: true,
-      width: '80px'
+      width: '80px',
+      cell: (row: Sede) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="font-mono text-sm">{row.id}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'nombre',
@@ -53,7 +63,10 @@ const SedePage: React.FC = () => {
       header: 'Dirección',
       sortable: true,
       cell: (row: Sede) => (
-        <span className="text-gray-600 dark:text-gray-400">{row.direccion}</span>
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-green-500" />
+          <span className="text-gray-600 dark:text-gray-400">{row.direccion}</span>
+        </div>
       )
     },
     {
@@ -61,9 +74,12 @@ const SedePage: React.FC = () => {
       header: 'Centro',
       sortable: false,
       cell: (row: Sede) => (
-        <span className="text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">
-          {row.centro?.nombre || 'Sin centro'}
-        </span>
+        <div className="flex items-center gap-2">
+          <Settings className="h-4 w-4 text-purple-500" />
+          <span className="text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">
+            {row.centro?.nombre || 'Sin centro'}
+          </span>
+        </div>
       )
     },
     {
@@ -71,13 +87,20 @@ const SedePage: React.FC = () => {
       header: 'Estado',
       sortable: true,
       cell: (row: Sede) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            row.activo 
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {row.activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
       )
     },
     {
@@ -85,18 +108,28 @@ const SedePage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: Sede) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: Sede) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-blue-500" />
+          <span className="text-sm">{new Date(row.fechaCreacion).toLocaleDateString('es-ES')}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: Sede) => 
-        row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
+      cell: (row: Sede) => (
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-orange-500" />
+          <span className="text-sm">
+            {row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'}
+          </span>
+        </div>
+      )
     }
   ];
-
 
   const formFields: FieldDefinition<Sede>[] = [
     {
@@ -146,23 +179,35 @@ const SedePage: React.FC = () => {
     const sede = sedes.find(s => s.id === id);
     if (!sede) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar la sede "${sede.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar sede?',
+      text: `¿Está seguro de que desea eliminar la sede "${sede.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteSede(id);
-        addToast({
-          title: 'Sede eliminada',
-          description: `La sede "${sede.nombre}" ha sido eliminada exitosamente.`,
-          color: 'success'
+        await fetchSedes(); 
+        
+        Swal.fire({
+          title: '¡Eliminado!',
+          text: `La sede "${sede.nombre}" ha sido eliminada exitosamente.`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
         });
       } catch (error) {
-        addToast({
-          title: 'Error al eliminar',
-          description: error instanceof Error ? error.message : 'Error desconocido al eliminar la sede',
-          color: 'danger'
+        Swal.fire({
+          title: 'Error',
+          text: error instanceof Error ? error.message : 'Error desconocido al eliminar la sede',
+          icon: 'error'
         });
       }
     }
@@ -171,7 +216,6 @@ const SedePage: React.FC = () => {
   const handleSubmit = async (data: Partial<Sede>) => {
     try {
       if (editingSede) {
-        // Actualizar sede existente
         await updateSede(editingSede.id, data);
         addToast({
           title: 'Sede actualizada',
@@ -186,6 +230,8 @@ const SedePage: React.FC = () => {
           color: 'success'
         });
       }
+      
+      await fetchSedes();
       setIsFormOpen(false);
       setEditingSede(null);
     } catch (error) {
@@ -244,6 +290,31 @@ const SedePage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Administra las sedes del sistema
           </p>
+        </div>
+      </div>
+
+      {/* Card de navegación a Centros */}
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">
+              Gestión de Centros
+            </h3>
+            <p className="text-blue-100 mb-4">
+              Administra los centros de formación del sistema
+            </p>
+            <button
+              onClick={() => navigate("/centros")}
+              className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-200 font-medium"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Gestionar Centros
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+          <div className="hidden md:block">
+            <Building className="w-16 h-16 text-blue-200" />
+          </div>
         </div>
       </div>
 

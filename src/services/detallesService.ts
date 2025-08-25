@@ -12,6 +12,9 @@ export interface CreateDetallesDto {
   cantidad: number;
   materialId: number;
   solicitudId: number;
+  numeroFactura?: string;
+  accion?: string;
+  solicitanteId?: number;
 }
 
 export const detallesService = {

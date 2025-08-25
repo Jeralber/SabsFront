@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { addToast } from "@heroui/react";
-import { Settings, ExternalLink } from "lucide-react";
+import { Settings, ExternalLink, Hash, Building, MapPin, CheckCircle, XCircle, Calendar, Clock, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DataTable } from "../components/molecules/DataTable";
 import {
@@ -10,6 +10,7 @@ import {
 import { useCentro } from "../hooks/useCentro";
 import { useMunicipio } from "../hooks/useMunicipio";
 import { Centro } from "../types/centro.types";
+import Swal from 'sweetalert2';
 
 interface Column<T> {
   accessorKey: keyof T;
@@ -21,12 +22,12 @@ interface Column<T> {
 
 const CentroPage: React.FC = () => {
   const navigate = useNavigate();
-  const { centros, loading, error, createCentro, updateCentro, deleteCentro } =
+  const { centros, loading, error, createCentro, updateCentro, deleteCentro, fetchCentros } =
     useCentro();
 
   const { municipios } = useMunicipio();
 
-
+  
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCentro, setEditingCentro] = useState<Centro | null>(null);
   const [formData, setFormData] = useState<Partial<Centro>>({});
@@ -77,6 +78,8 @@ const CentroPage: React.FC = () => {
           color: "success",
         });
       }
+      
+      await fetchCentros();
       resetForm();
     } catch (error) {
       addToast({
@@ -94,11 +97,23 @@ const CentroPage: React.FC = () => {
       accessorKey: "id",
       header: "ID",
       sortable: true,
+      cell: (row: Centro) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="font-mono text-sm">{row.id}</span>
+        </div>
+      )
     },
     {
       accessorKey: "nombre",
       header: "Nombre",
       sortable: true,
+      cell: (row: Centro) => (
+        <div className="flex items-center gap-2">
+          <Building className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{row.nombre}</span>
+        </div>
+      )
     },
     {
       accessorKey: "municipio",
@@ -106,7 +121,7 @@ const CentroPage: React.FC = () => {
       sortable: false,
       cell: (row: Centro) =>(
         <div className="flex items-center gap-2">
-
+          <MapPin className="h-4 w-4 text-green-500" />
           <span className="font-medium">{row.municipio?.nombre || 'Sin municipio'}</span>
         </div>
       )
@@ -118,16 +133,24 @@ const CentroPage: React.FC = () => {
       cell: (row: Centro) => {
         if (row.sedes && row.sedes.length > 0) {
           return (
-            <div className="flex flex-wrap gap-1">
-              {row.sedes.map((sede) => (
-                <span key={sede.id} className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">
-                  {sede.nombre}
-                </span>
-              ))}
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-purple-500" />
+              <div className="flex flex-wrap gap-1">
+                {row.sedes.map((sede) => (
+                  <span key={sede.id} className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">
+                    {sede.nombre}
+                  </span>
+                ))}
+              </div>
             </div>
           );
         }
-        return <span className="text-gray-500">Sin sedes</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-gray-400" />
+            <span className="text-gray-500">Sin sedes</span>
+          </div>
+        );
       }
     },
     {
@@ -135,15 +158,22 @@ const CentroPage: React.FC = () => {
       header: "Estado",
       sortable: true,
       cell: (row: Centro) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            row.activo
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-          }`}
-        >
-          {row.activo ? "Activo" : "Inactivo"}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              row.activo
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+            }`}
+          >
+            {row.activo ? "Activo" : "Inactivo"}
+          </span>
+        </div>
       ),
     },
     {
@@ -151,18 +181,28 @@ const CentroPage: React.FC = () => {
       header: "Fecha de Creación",
       sortable: true,
       isDate: true,
-      cell: (row: Centro) =>
-        new Date(row.fechaCreacion).toLocaleDateString("es-ES"),
+      cell: (row: Centro) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-blue-500" />
+          <span className="text-sm">{new Date(row.fechaCreacion).toLocaleDateString("es-ES")}</span>
+        </div>
+      )
     },
     {
       accessorKey: "fechaActualizacion",
       header: "Última Actualización",
       sortable: true,
       isDate: true,
-      cell: (row: Centro) =>
-        row.fechaActualizacion
-          ? new Date(row.fechaActualizacion).toLocaleDateString("es-ES")
-          : "N/A",
+      cell: (row: Centro) => (
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-orange-500" />
+          <span className="text-sm">
+            {row.fechaActualizacion
+              ? new Date(row.fechaActualizacion).toLocaleDateString("es-ES")
+              : "N/A"}
+          </span>
+        </div>
+      )
     },
   ];
 
@@ -188,19 +228,38 @@ const CentroPage: React.FC = () => {
   ];
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este centro?")) {
+    const centro = centros.find(c => c.id === id);
+    if (!centro) return;
+
+    const result = await Swal.fire({
+      title: '¿Eliminar centro?',
+      text: `¿Está seguro de que desea eliminar el centro "${centro.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+
+    if (result.isConfirmed) {
       try {
         await deleteCentro(id);
-        addToast({
-          title: "Éxito",
-          description: "Centro eliminado correctamente",
-          color: "success",
+        await fetchCentros();
+        
+        Swal.fire({
+          title: '¡Eliminado!',
+          text: `El centro "${centro.nombre}" ha sido eliminado exitosamente.`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
         });
       } catch (error) {
-        addToast({
-          title: "Error",
-          description: "Error al eliminar el centro",
-          color: "danger",
+        Swal.fire({
+          title: 'Error',
+          text: 'Error al eliminar el centro',
+          icon: 'error'
         });
       }
     }

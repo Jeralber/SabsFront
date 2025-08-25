@@ -1,171 +1,103 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Material } from '../types/material.types';
-import { materialService } from '../services/materialService';
+import { materialService,  } from '../services/materialService';
+import { useGenericCRUD } from './useGenericCRUD';
 
-interface UseMaterialState {
-  materiales: Material[];
-  stockMateriales: Material[];
-  selectedMaterial: Material | null;
-  loading: boolean;
-  error: string | null;
-}
+// Adaptador para hacer compatible materialService con useGenericCRUD
+const materialServiceAdapter = {
+  getAll: async (): Promise<{ data: Material[] }> => {
+    const response = await materialService.getAll();
+    return {
+      data: Array.isArray(response.data) ? response.data : []
+    };
+  },
+  
+  getById: async (id: number): Promise<{ data: Material }> => {
+    const response = await materialService.getById(id);
+    if (!response.data || Array.isArray(response.data)) {
+      throw new Error('Material no encontrado');
+    }
+    return { data: response.data };
+  },
+  
+  create: async (material: Partial<Material>): Promise<{ data: Material }> => {
+    const response = await materialService.create(material);
+    if (!response.data || Array.isArray(response.data)) {
+      throw new Error('Error al crear material');
+    }
+    return { data: response.data };
+  },
+  
+  update: async (id: number, material: Partial<Material>): Promise<{ data: Material }> => {
+    const response = await materialService.update(id, material);
+    if (!response.data || Array.isArray(response.data)) {
+      throw new Error('Error al actualizar material');
+    }
+    return { data: response.data };
+  },
+  
+  delete: async (id: number): Promise<void> => {
+    await materialService.delete(id);
+  }
+};
 
 export const useMaterial = () => {
-  const [state, setState] = useState<UseMaterialState>({
-    materiales: [],
-    stockMateriales: [],
-    selectedMaterial: null,
-    loading: false,
-    error: null
-  });
-
-  const fetchMateriales = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await materialService.getAll();
-      setState(prev => ({
-        ...prev,
-        materiales: Array.isArray(response.data) ? response.data : [],
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Error al cargar materiales'
-      }));
-    }
-  }, []);
-
+  const crud = useGenericCRUD(materialServiceAdapter, 'material');
+  
+  // Estados adicionales específicos para materiales
+  const [stockMateriales, setStockMateriales] = useState<Material[]>([]);
+  
+  // Función específica para obtener stock
   const fetchStock = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    crud.setLoading(true);
     try {
       const stockData = await materialService.getStock();
-      setState(prev => ({
-        ...prev,
-        stockMateriales: stockData,
-        loading: false
-      }));
+      setStockMateriales(stockData);
     } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Error al cargar stock de materiales'
-      }));
+      crud.setError(error instanceof Error ? error.message : 'Error al cargar stock');
+    } finally {
+      crud.setLoading(false);
     }
-  }, []);
-
-  const fetchMaterialById = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await materialService.getById(id);
-      setState(prev => ({
-        ...prev,
-        selectedMaterial: response.data as Material,
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : `Error al cargar material con ID ${id}`
-      }));
-    }
-  }, []);
-
+  }, [crud]);
+  
+  // Función específica para obtener por sitio
   const fetchBySitio = useCallback(async (sitioId: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    crud.setLoading(true);
     try {
       const response = await materialService.getBySitio(sitioId);
-      setState(prev => ({
-        ...prev,
-        materiales: Array.isArray(response.data) ? response.data : [],
-        loading: false
-      }));
+      const materiales = Array.isArray(response.data) ? response.data : [];
+      crud.setState(prev => ({ ...prev, items: materiales, loading: false }));
     } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Error al cargar materiales por sitio'
-      }));
+      crud.setError(error instanceof Error ? error.message : 'Error al cargar materiales por sitio');
     }
-  }, []);
-
-  const createMaterial = useCallback(async (material: Partial<Material>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await materialService.create(material);
-      setState(prev => ({
-        ...prev,
-        materiales: [...prev.materiales, response.data as Material],
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al crear material';
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const updateMaterial = useCallback(async (id: number, material: Partial<Material>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await materialService.update(id, material);
-      const updatedMaterial = response.data as Material;
-      setState(prev => ({
-        ...prev,
-        materiales: prev.materiales.map(m => m.id === id ? updatedMaterial : m),
-        selectedMaterial: prev.selectedMaterial?.id === id ? updatedMaterial : prev.selectedMaterial,
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al actualizar material con ID ${id}`;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const deleteMaterial = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      await materialService.delete(id);
-      setState(prev => ({
-        ...prev,
-        materiales: prev.materiales.filter(m => m.id !== id),
-        selectedMaterial: prev.selectedMaterial?.id === id ? null : prev.selectedMaterial,
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : `Error al eliminar material con ID ${id}`
-      }));
-    }
-  }, []);
-
+  }, [crud]);
+  
+  // Inicializar datos
   useEffect(() => {
-    fetchMateriales();
-  }, [fetchMateriales]);
-
+    crud.fetchAll();
+  }, [crud.fetchAll]);
+  
   return {
-    ...state,
-    fetchMateriales,
+    // Estados del CRUD genérico
+    materiales: crud.items,
+    selectedMaterial: crud.selectedItem,
+    loading: crud.loading,
+    error: crud.error,
+    
+    // Estados específicos
+    stockMateriales,
+    
+    // Funciones del CRUD genérico
+    fetchMateriales: crud.fetchAll,
+    fetchMaterialById: crud.fetchById,
+    createMaterial: crud.create,
+    updateMaterial: crud.update,
+    deleteMaterial: crud.remove,
+    clearError: crud.clearError,
+    clearSelection: crud.clearSelection,
+    
+    // Funciones específicas
     fetchStock,
-    fetchMaterialById,
-    fetchBySitio,  // Agregamos fetchBySitio aquí para que esté disponible
-    createMaterial,
-    updateMaterial,
-    deleteMaterial
+    fetchBySitio
   };
 };

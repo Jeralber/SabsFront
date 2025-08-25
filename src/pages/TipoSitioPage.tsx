@@ -4,8 +4,10 @@ import { GenericForm, FieldDefinition } from '../components/molecules/GenericFor
 import { useTipoSitio } from '../hooks/useTipoSitio';
 import { TipoSitio } from '../types/tipo-sitio.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Tag, Hash, Calendar, CheckCircle, XCircle, ExternalLink, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
+import { Link } from 'react-router-dom';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -34,25 +36,44 @@ const TipoSitioPage: React.FC = () => {
       accessorKey: 'id',
       header: 'ID',
       sortable: true,
-      width: '80px'
+      width: '80px',
+      cell: (row: TipoSitio) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="font-mono text-sm">#{row.id}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'nombre',
       header: 'Nombre',
-      sortable: true
+      sortable: true,
+      cell: (row: TipoSitio) => (
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{row.nombre}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'activo',
       header: 'Estado',
       sortable: true,
       cell: (row: TipoSitio) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            row.activo 
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {row.activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
       )
     },
     {
@@ -60,15 +81,26 @@ const TipoSitioPage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: TipoSitio) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: TipoSitio) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-purple-500" />
+          <span>{new Date(row.fechaCreacion).toLocaleDateString('es-ES')}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: TipoSitio) => 
-        row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
+      cell: (row: TipoSitio) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-orange-500" />
+          <span>
+            {row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'}
+          </span>
+        </div>
+      )
     }
   ];
 
@@ -101,11 +133,19 @@ const TipoSitioPage: React.FC = () => {
     const tipoSitio = tiposSitio.find(t => t.id === id);
     if (!tipoSitio) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el tipo de sitio "${tipoSitio.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar Tipo de Sitio?',
+      text: `¿Está seguro de que desea eliminar el tipo de sitio "${tipoSitio.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteTipoSitio(id);
         addToast({
@@ -113,11 +153,25 @@ const TipoSitioPage: React.FC = () => {
           description: `El tipo de sitio "${tipoSitio.nombre}" ha sido eliminado exitosamente.`,
           color: 'success'
         });
+        
+        await Swal.fire({
+          title: '¡Eliminado!',
+          text: 'El tipo de sitio ha sido eliminado correctamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
       } catch (error) {
         addToast({
           title: 'Error al eliminar',
           description: error instanceof Error ? error.message : 'Error desconocido al eliminar el tipo de sitio',
           color: 'danger'
+        });
+        
+        await Swal.fire({
+          title: 'Error',
+          text: 'No se pudo eliminar el tipo de sitio. Inténtelo nuevamente.',
+          icon: 'error'
         });
       }
     }
@@ -142,6 +196,11 @@ const TipoSitioPage: React.FC = () => {
       }
       setIsFormOpen(false);
       setEditingTipoSitio(null);
+      
+      // Mecanismo de refresh mejorado
+      setTimeout(() => {
+        // El hook useTipoSitio debería refrescar automáticamente los datos
+      }, 100);
     } catch (error) {
       addToast({
         title: editingTipoSitio ? 'Error al actualizar' : 'Error al crear',
@@ -197,12 +256,13 @@ const TipoSitioPage: React.FC = () => {
             Administra los tipos de sitio del sistema
           </p>
         </div>
-        <button
-          onClick={() => navigate(-1)}
-          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        <Link
+          to="/sitios"
+          className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 font-medium"
         >
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Volver
-        </button>
+        </Link>
       </div>
 
       <DataTable

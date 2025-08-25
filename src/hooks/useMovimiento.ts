@@ -67,14 +67,19 @@ export const useMovimiento = () => {
     }
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await movimientoService.crear(movimiento);
+      const nuevoMovimiento = await movimientoService.crear(movimiento);
+      console.log('Movimiento recibido:', nuevoMovimiento);
+      if (!nuevoMovimiento || typeof nuevoMovimiento !== 'object' || !nuevoMovimiento.id) {
+        console.error('Validación falló para:', nuevoMovimiento);
+        throw new Error('No se recibió un movimiento válido en la respuesta');
+      }
       setState(prev => ({
         ...prev,
-        movimientos: [...prev.movimientos, response as Movimiento],
+        movimientos: [...prev.movimientos, nuevoMovimiento],
         loading: false
       }));
       await fetchMateriales(); // Refrescar materiales después de crear
-      return response;
+      return nuevoMovimiento;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al crear movimiento';
       setState(prev => ({
@@ -84,26 +89,24 @@ export const useMovimiento = () => {
       }));
       throw new Error(errorMessage);
     }
-  }, []);
+  }, [fetchMateriales]);
 
   const createMovimientoConSolicitud = useCallback(async (movimiento: Partial<Movimiento> & { solicitudId?: number }) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const response = await movimientoService.crearConSolicitud(movimiento);
-      // Ajuste: accede a response.data (el wrapper {message, data})
-      if (!response || !response.data) {
-        throw new Error('Respuesta de API inválida: estructura incompleta');
-      }
-      const nuevoMovimiento = response.data.movimiento; 
-      if (!nuevoMovimiento) {
-        throw new Error('Respuesta de API inválida: falta el campo data con el movimiento');
+      const nuevoMovimiento = response.data;
+      console.log('Movimiento con solicitud recibido:', nuevoMovimiento);
+      if (!nuevoMovimiento || typeof nuevoMovimiento !== 'object' || !nuevoMovimiento.id) {
+        console.error('Validación falló para movimiento con solicitud:', nuevoMovimiento);
+        throw new Error('No se recibió un movimiento válido en la respuesta');
       }
       setState(prev => ({
         ...prev,
         movimientos: [...prev.movimientos, nuevoMovimiento],
         loading: false
       }));
-      return response;
+      return { data: nuevoMovimiento };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al crear movimiento con solicitud';
       setState(prev => ({

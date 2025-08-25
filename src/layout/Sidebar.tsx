@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import { FaChevronDown, FaChevronRight, FaUserCog, FaChartBar, FaTable, FaHome, FaExchangeAlt, FaUsers, FaBuilding, FaMapMarkerAlt, FaGraduationCap, FaCity, FaBox } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaUserCog, FaChartBar, FaTable, FaHome, FaExchangeAlt, FaUsers, FaBuilding, FaMapMarkerAlt, FaGraduationCap, FaCity, FaBox, FaWarehouse, FaFileAlt, FaStore } from 'react-icons/fa';
 import { FaBell } from 'react-icons/fa';  // Añadir este import si no existe
 
 
@@ -108,18 +108,19 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
           path: '/sitios',
           module: 'sitios'
         },
-        {
-          title: 'Bodega',
-          icon: <FaBox className="w-5 h-5" />,
-          path: '/bodega',
-          module: 'bodega'
-        },
-        {
+         {
           title: 'Materiales',
           icon: <FaBox className="w-4 h-4" />,
           path: '/materiales',
           module: 'materiales'
+        },
+        {
+          title: 'Bodega',
+          icon: <FaStore className="w-5 h-5" />,
+          path: '/bodega',
+          module: 'bodega'
         }
+       
       ]
     },
     {
@@ -136,7 +137,7 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
     },
     {
       title: 'Reportes',
-      icon: <FaChartBar className="w-5 h-5" />,
+      icon: <FaFileAlt className="w-5 h-5" />,
       path: '/reportes',
       module: 'reportes'
     },

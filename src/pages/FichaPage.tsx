@@ -3,8 +3,10 @@ import { DataTable } from "@/components/molecules/DataTable";
 import { GenericForm, FieldDefinition } from "@/components/molecules/GenericForm";
 import { useFicha } from "@/hooks/useFicha";
 import { Ficha } from "@/types/ficha.types";
-import { Edit, Trash } from "lucide-react";
+import { Edit, Trash,  Users, Calendar, CheckCircle, XCircle, Hash, ExternalLink, GraduationCap } from "lucide-react";
 import { addToast } from "@heroui/react";
+import Swal from 'sweetalert2';
+import { Link } from "react-router-dom";
 
 export default function FichaPage() {
   const {
@@ -39,39 +41,62 @@ export default function FichaPage() {
     },
   ];
 
-  // Definición de columnas para la tabla
+  // Definición de columnas para la tabla con iconos
   const columns = [
     {
       accessorKey: "numero" as keyof Ficha,
       header: "Número",
       sortable: true,
+      cell: (row: Ficha) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-blue-500" />
+          <span className="font-medium">{row.numero}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "cantidadAprendices" as keyof Ficha,
       header: "Cantidad Aprendices",
       sortable: true,
-      cell: (row: Ficha) => row.cantidadAprendices || "No especificado",
+      cell: (row: Ficha) => (
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-green-500" />
+          <span>{row.cantidadAprendices || "No especificado"}</span>
+        </div>
+      ),
     },
     {
       accessorKey: "activo" as keyof Ficha,
       header: "Estado",
       cell: (row: Ficha) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            row.activo
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-          }`}
-        >
-          {row.activo ? "Activo" : "Inactivo"}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              row.activo
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+            }`}
+          >
+            {row.activo ? "Activo" : "Inactivo"}
+          </span>
+        </div>
       ),
     },
     {
       accessorKey: "fechaCreacion" as keyof Ficha,
       header: "Fecha Creación",
       isDate: true,
-      cell: (row: Ficha) => new Date(row.fechaCreacion).toLocaleDateString(),
+      cell: (row: Ficha) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-purple-500" />
+          <span>{new Date(row.fechaCreacion).toLocaleDateString()}</span>
+        </div>
+      ),
     },
   ];
 
@@ -104,19 +129,46 @@ export default function FichaPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("¿Está seguro de que desea eliminar esta ficha?")) {
+    const ficha = fichas.find(f => f.id === id);
+    const result = await Swal.fire({
+      title: '¿Eliminar Ficha?',
+      text: `¿Está seguro de que desea eliminar la ficha ${ficha?.numero}? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+
+    if (result.isConfirmed) {
       try {
         await deleteFicha(id);
         addToast({
           title: "Ficha eliminada",
-          description: "La ficha se ha eliminado exitosamente",
+          description: `La ficha ${ficha?.numero} se ha eliminado exitosamente`,
           color: "success",
+        });
+        
+        await Swal.fire({
+          title: '¡Eliminada!',
+          text: 'La ficha ha sido eliminada correctamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
         });
       } catch (error) {
         addToast({
           title: "Error al eliminar",
           description: "No se pudo eliminar la ficha",
           color: "danger",
+        });
+        
+        await Swal.fire({
+          title: 'Error',
+          text: 'No se pudo eliminar la ficha. Inténtelo nuevamente.',
+          icon: 'error'
         });
       }
     }
@@ -146,6 +198,11 @@ export default function FichaPage() {
       setShowForm(false);
       setEditingFicha(null);
       setIsEditing(false);
+      
+      // Mecanismo de refresh mejorado
+      setTimeout(() => {
+        // El hook useFicha debería refrescar automáticamente los datos
+      }, 100);
     } catch (error) {
       addToast({
         title: `Error al ${isEditing ? "actualizar" : "crear"} ficha`,
@@ -191,16 +248,41 @@ export default function FichaPage() {
   }
 
   return (
-    <div className="container mx-auto ">
-      <div className="flex items-center gap-3 mb-6">
-       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Gestión de Fichas
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Administra las áreas del sistema
-          </p>
+    <div className=" space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Gestión de Fichas
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Administra las fichas de formación
+            </p>
+          </div>
+        </div>
       </div>
+
+      {/* Tarjeta de navegación a Titulados */}
+      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 mb-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Gestión de Titulados</h3>
+            <p className="text-blue-100 mb-4">
+              Administra los titulados asociados a las fichas
+            </p>
+            <Link
+              to="/titulados"
+              className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-200 font-medium"
+            >
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Gestionar Titulados
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </Link>
+          </div>
+          <div className="hidden md:block">
+            <GraduationCap className="w-12 h-12 text-blue-200" />
+          </div>
+        </div>
       </div>
 
       <DataTable

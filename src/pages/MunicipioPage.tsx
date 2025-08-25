@@ -4,7 +4,9 @@ import { GenericForm } from '../components/molecules/GenericForm';
 import { useMunicipio } from '../hooks/useMunicipio';
 import { Municipio } from '../types/municipio.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2, MapPin } from 'lucide-react';
+import { Edit, Trash2, MapPin, Hash, CheckCircle, XCircle, Calendar, Clock, Settings, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -16,12 +18,14 @@ type Column<T> = {
 };
 
 const MunicipioPage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     municipios,
     error,
     createMunicipio,
     updateMunicipio,
-    deleteMunicipio
+    deleteMunicipio,
+    fetchMunicipios
   } = useMunicipio();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -32,7 +36,13 @@ const MunicipioPage: React.FC = () => {
       accessorKey: 'id',
       header: 'ID',
       sortable: true,
-      width: '80px'
+      width: '80px',
+      cell: (row: Municipio) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="font-mono text-sm">{row.id}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'nombre',
@@ -50,13 +60,20 @@ const MunicipioPage: React.FC = () => {
       header: 'Estado',
       sortable: true,
       cell: (row: Municipio) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            row.activo 
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {row.activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
       )
     },
     {
@@ -64,15 +81,26 @@ const MunicipioPage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: Municipio) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: Municipio) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-blue-500" />
+          <span className="text-sm">{new Date(row.fechaCreacion).toLocaleDateString('es-ES')}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: Municipio) => 
-        row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
+      cell: (row: Municipio) => (
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-orange-500" />
+          <span className="text-sm">
+            {row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'}
+          </span>
+        </div>
+      )
     }
   ];
 
@@ -105,29 +133,40 @@ const MunicipioPage: React.FC = () => {
     const municipio = municipios.find(m => m.id === id);
     if (!municipio) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el municipio "${municipio.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar municipio?',
+      text: `¿Está seguro de que desea eliminar el municipio "${municipio.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteMunicipio(id);
-        addToast({
-          title: 'Municipio eliminado',
-          description: `El municipio "${municipio.nombre}" ha sido eliminado exitosamente.`,
-          color: 'success'
+        await fetchMunicipios();
+        
+        Swal.fire({
+          title: '¡Eliminado!',
+          text: `El municipio "${municipio.nombre}" ha sido eliminado exitosamente.`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
         });
       } catch (error) {
-        addToast({
-          title: 'Error al eliminar',
-          description: error instanceof Error ? error.message : 'Error desconocido al eliminar el municipio',
-          color: 'danger'
+        Swal.fire({
+          title: 'Error',
+          text: error instanceof Error ? error.message : 'Error desconocido al eliminar el municipio',
+          icon: 'error'
         });
       }
     }
   };
 
-  
   const handleSubmit = async (data: Partial<Municipio>) => {
     try {
       if (editingMunicipio) {
@@ -145,6 +184,8 @@ const MunicipioPage: React.FC = () => {
           color: 'success'
         });
       }
+      
+      await fetchMunicipios();
       setIsFormOpen(false);
       setEditingMunicipio(null);
     } catch (error) {
@@ -201,6 +242,31 @@ const MunicipioPage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Administra los municipios del sistema
           </p>
+        </div>
+      </div>
+
+      {/* Card de navegación a Centros */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">
+              Gestión de Centros
+            </h3>
+            <p className="text-green-100 mb-4">
+              Los centros están asociados a municipios. Administra los centros de formación
+            </p>
+            <button
+              onClick={() => navigate("/centros")}
+              className="inline-flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors duration-200 font-medium"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Gestionar Centros
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+          <div className="hidden md:block">
+            <MapPin className="w-16 h-16 text-green-200" />
+          </div>
         </div>
       </div>
 

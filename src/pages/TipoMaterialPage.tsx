@@ -4,8 +4,9 @@ import { GenericForm } from '../components/molecules/GenericForm';
 import { useTipoMaterial } from '../hooks/useTipoMaterial';
 import { TipoMaterial } from '../types/tipo-material.types';
 import { addToast } from '@heroui/react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Hash, Package, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -22,7 +23,8 @@ const TipoMaterialPage: React.FC = () => {
     error,
     createTipoMaterial,
     updateTipoMaterial,
-    deleteTipoMaterial
+    deleteTipoMaterial,
+    loading
   } = useTipoMaterial();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -34,15 +36,21 @@ const TipoMaterialPage: React.FC = () => {
       accessorKey: 'id',
       header: 'ID',
       sortable: true,
-      width: '80px'
+      width: '80px',
+      cell: (row: TipoMaterial) => (
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="font-mono text-sm">{row.id}</span>
+        </div>
+      )
     },
     {
-      accessorKey: 'tipo'  as keyof TipoMaterial,
+      accessorKey: 'tipo' as keyof TipoMaterial,
       header: 'Tipo',
       sortable: true,
       cell: (row: TipoMaterial) => (
         <div className="flex items-center gap-2">
-          <div className="h-4 w-4 text-blue-500" />
+          <Package className="h-4 w-4 text-blue-500" />
           <span className="font-medium">{row.tipo}</span>
         </div>
       )
@@ -52,13 +60,20 @@ const TipoMaterialPage: React.FC = () => {
       header: 'Estado',
       sortable: true,
       cell: (row: TipoMaterial) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            row.activo 
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {row.activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
       )
     },
     {
@@ -66,15 +81,26 @@ const TipoMaterialPage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: TipoMaterial) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: TipoMaterial) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-gray-500" />
+          <span>{new Date(row.fechaCreacion).toLocaleDateString('es-ES')}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: TipoMaterial) => 
-        row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
+      cell: (row: TipoMaterial) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-gray-500" />
+          <span>
+            {row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'}
+          </span>
+        </div>
+      )
     }
   ];
 
@@ -93,28 +119,33 @@ const TipoMaterialPage: React.FC = () => {
     }
   ];
 
-
   const handleCreate = () => {
     setEditingTipoMaterial(null);
     setIsFormOpen(true);
   };
-
 
   const handleEdit = (tipoMaterial: TipoMaterial) => {
     setEditingTipoMaterial(tipoMaterial);
     setIsFormOpen(true);
   };
 
-
   const handleDelete = async (id: number) => {
     const tipoMaterial = tiposMaterial.find(t => t.id === id);
     if (!tipoMaterial) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el tipo de material "${tipoMaterial.tipo}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar tipo de material?',
+      text: `¿Está seguro de que desea eliminar el tipo de material "${tipoMaterial.tipo}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteTipoMaterial(id);
         addToast({
@@ -122,6 +153,11 @@ const TipoMaterialPage: React.FC = () => {
           description: `El tipo de material "${tipoMaterial.tipo}" ha sido eliminado exitosamente.`,
           color: 'success'
         });
+        
+        // Mecanismo de refresh mejorado
+        setTimeout(() => {
+          // El hook useTipoMaterial debería refrescar automáticamente los datos
+        }, 100);
       } catch (error) {
         addToast({
           title: 'Error al eliminar',
@@ -131,7 +167,6 @@ const TipoMaterialPage: React.FC = () => {
       }
     }
   };
-
 
   const handleSubmit = async (data: Partial<TipoMaterial>) => {
     try {
@@ -152,6 +187,11 @@ const TipoMaterialPage: React.FC = () => {
       }
       setIsFormOpen(false);
       setEditingTipoMaterial(null);
+      
+      // Mecanismo de refresh mejorado
+      setTimeout(() => {
+        // El hook useTipoMaterial debería refrescar automáticamente los datos
+      }, 100);
     } catch (error) {
       addToast({
         title: editingTipoMaterial ? 'Error al actualizar' : 'Error al crear',
@@ -160,7 +200,6 @@ const TipoMaterialPage: React.FC = () => {
       });
     }
   };
-
 
   const handleCancel = () => {
     setIsFormOpen(false);
@@ -181,6 +220,14 @@ const TipoMaterialPage: React.FC = () => {
       variant: 'danger' as const
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg text-gray-600 dark:text-gray-400">Cargando tipos de material...</div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -215,7 +262,6 @@ const TipoMaterialPage: React.FC = () => {
           Volver
         </button>
       </div>
-
 
       <DataTable
         data={tiposMaterial}

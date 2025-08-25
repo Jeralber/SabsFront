@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSitio } from '../hooks/useSitio';
 import { Sitio } from '../types/sitio.types';
 import { Card, CardBody, CardHeader } from '@heroui/react';
-import { Building } from 'lucide-react';
+import { Building, ArrowLeft } from 'lucide-react';
 
 const SitiosPorTipoPage: React.FC = () => {
   const { tipoId } = useParams<{ tipoId: string }>();
@@ -16,8 +16,26 @@ const SitiosPorTipoPage: React.FC = () => {
   const sitiosFiltrados: Sitio[] = sitios.filter((sitio: Sitio) => sitio.tipoSitioId === Number(tipoId));
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Sitios para Tipo ID {tipoId}</h1>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <Building className="h-8 w-8 text-green-600" />
+            Sitios por Tipo
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Selecciona un sitio para ver sus materiales
+          </p>
+        </div>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sitiosFiltrados.map((sitio: Sitio) => (
           <Card
@@ -41,6 +59,18 @@ const SitiosPorTipoPage: React.FC = () => {
           </Card>
         ))}
       </div>
+
+      {sitiosFiltrados.length === 0 && (
+        <div className="text-center py-12">
+          <Building className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            No hay sitios disponibles
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            No se encontraron sitios para este tipo
+          </p>
+        </div>
+      )}
     </div>
   );
 };
