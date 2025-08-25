@@ -132,7 +132,7 @@ export const LoginForm = () => {
                 )}
               </Button>
 
-              {/* Forgot Password Link */}
+              {/* Forgot Password Link 
               <div className="text-center">
                 <button
                   type="button"
@@ -141,7 +141,7 @@ export const LoginForm = () => {
                 >
                   ¿Olvidaste tu contraseña?
                 </button>
-              </div>
+              </div>*/}
             </div>
           </form>
         </div>

@@ -27,24 +27,7 @@ export const PasswordRecoveryForm = ({ onBackToLogin }: PasswordRecoveryFormProp
   
   // Corregir useEffect - depender de tokenFromURL y asignar al estado token
   useEffect(() => {
-    // Agregar después de la línea 26
-    useEffect(() => {
-      console.log('=== DEBUG TOKEN ===');
-      console.log('Current URL:', window.location.href);
-      console.log('URL pathname:', window.location.pathname);
-      console.log('Token from URL:', tokenFromURL);
-      console.log('useParams result:', useParams());
-      console.log('==================');
-      
-      if (tokenFromURL) {
-        console.log('Token found, setting step to changePassword');
-        setToken(tokenFromURL);
-        setStep('changePassword');
-        verifyTokenValidity(tokenFromURL);
-      } else {
-        console.log('No token found in URL');
-      }
-    }, [tokenFromURL]);
+    console.log('Token from URL:', tokenFromURL);
     if (tokenFromURL) {
       console.log('Token found, setting step to changePassword');
       setToken(tokenFromURL); // Asignar el token al estado
