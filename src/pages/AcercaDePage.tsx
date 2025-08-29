@@ -316,7 +316,7 @@ export default function AcercaDePage() {
               </div>
               <p className="text-blue-100 mb-4">
                 Sistema de Administración de Bienes y Servicios - Una solución integral para la gestión de inventarios, 
-                solicitudes y reportes en instituciones educativas.
+                movimientos y reportes en instituciones educativas.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                 <div className="bg-white/10 rounded-lg p-4">
@@ -350,7 +350,7 @@ export default function AcercaDePage() {
                   </li>
                   <li className="flex items-center">
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                    Sistema de solicitudes y aprobaciones
+                    Sistema de movimientos y aprobaciones
                   </li>
                   <li className="flex items-center">
                     <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>

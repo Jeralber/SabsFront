@@ -1,80 +1,75 @@
 import axios from "@/lib/axios";
-import { Movimiento } from '../types/movimiento.types';
-import { materialService } from './materialService'; // Importar para actualizar material
+import { Movimiento, CreateMovimientoDto, AprobarMovimientoDto, MovimientoResponse, MovimientoListResponse } from '../types/movimiento.types';
 
 const API_URL = '/movimientos';
 
-export interface MovimientosPaginados {
-  data: Movimiento[];
-  total: number;
-  page: number;
-  lastPage: number;
+export interface MovimientosFiltros {
+  estado?: 'NO_APROBADO' | 'APROBADO' | 'RECHAZADO';
+  materialId?: number;
+  solicitanteId?: number;
+  aprobadorId?: number;
+  tipoMovimientoId?: number;
+  fechaDesde?: string;
+  fechaHasta?: string;
 }
 
 export const movimientoService = {
-  crear: async (data: Partial<Movimiento>): Promise<Movimiento> => {
-    // Asegúrate de que data incluya descripcion y sitios si es necesario
-    const response = await axios.post<{message: string, data: Movimiento}>(API_URL, data);
-    const nuevoMovimiento = response.data.data; // Extraer del objeto envuelto
-
-    // Actualizar sitio del material si hay sitio en el movimiento
-    if (nuevoMovimiento.sitio && nuevoMovimiento.materialId) {
-      const nuevoSitioId = nuevoMovimiento.sitio.id;
-      await materialService.update(nuevoMovimiento.materialId, { sitioId: nuevoSitioId });
-    }
-
-    return nuevoMovimiento;
-  },
-
-  obtenerTodos: async (): Promise<Movimiento[]> => {
-    const response = await axios.get<{message: string, data: Movimiento[]}>(API_URL);
+  // Crear nuevo movimiento
+  crear: async (data: CreateMovimientoDto): Promise<Movimiento> => {
+    const response = await axios.post<MovimientoResponse>(API_URL, data);
     return response.data.data;
   },
 
+  // Obtener todos los movimientos con filtros opcionales
+  obtenerTodos: async (filtros?: MovimientosFiltros): Promise<Movimiento[]> => {
+    let url = API_URL;
+    if (filtros) {
+      const params = new URLSearchParams();
+      Object.entries(filtros).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params.append(key, value.toString());
+        }
+      });
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+    }
+    const response = await axios.get<MovimientoListResponse>(url);
+    return response.data.data;
+  },
+
+  // Obtener movimientos pendientes de aprobación
+  obtenerPendientes: async (): Promise<Movimiento[]> => {
+    const response = await axios.get<MovimientoListResponse>(`${API_URL}/pendientes`);
+    return response.data.data;
+  },
+
+  // Obtener movimiento por ID
   obtenerPorId: async (id: number): Promise<Movimiento> => {
-    const response = await axios.get<{message: string, data: Movimiento}>(`${API_URL}/${id}`);
+    const response = await axios.get<MovimientoResponse>(`${API_URL}/${id}`);
     return response.data.data;
   },
 
-  actualizar: async (id: number, data: Partial<Movimiento>): Promise<Movimiento> => {
-    const response = await axios.patch<{message: string, data: Movimiento}>(`${API_URL}/${id}`, data);
+  // Aprobar o rechazar movimiento
+  aprobarRechazar: async (id: number, data: AprobarMovimientoDto): Promise<Movimiento> => {
+    const response = await axios.patch<MovimientoResponse>(`${API_URL}/${id}/aprobar-rechazar`, data);
     return response.data.data;
   },
 
-  eliminar: async (id: number): Promise<{ message: string }> => {
-    const response = await axios.delete<{ message: string }>(`${API_URL}/${id}`);
-    return response.data;
+  // Métodos de conveniencia para aprobar/rechazar
+  aprobar: async (id: number, aprobadorId: number, observaciones?: string): Promise<Movimiento> => {
+    return movimientoService.aprobarRechazar(id, {
+      estado: 'APROBADO',
+      aprobadorId,
+      observaciones
+    });
   },
 
-  aprobar: async (id: number, aprobadorId: number): Promise<Movimiento> => {
-    const response = await axios.post<{message: string, data: Movimiento}>(`${API_URL}/${id}/aprobar`, { aprobadorId });
-    const movimientoAprobado = response.data.data;
-
-    // Similar lógica para actualizar sitio al aprobar
-    if (movimientoAprobado.sitio && movimientoAprobado.materialId) {
-      const nuevoSitioId = movimientoAprobado.sitio.id;
-      await materialService.update(movimientoAprobado.materialId, { sitioId: nuevoSitioId });
-    }
-
-    return movimientoAprobado;
-  },
-
-  crearDesdeSolicitud: async (params: {
-    materialId: number;
-    cantidad: number;
-    personaId: number;
-    tipoMovimientoNombre: string;
-    solicitudId?: number;
-  }): Promise<Movimiento> => {
-    const response = await axios.post<{message: string, data: Movimiento}>(`${API_URL}/desde-solicitud`, params);
-    return response.data.data;
-  },
-  
-  crearConSolicitud: async (data: Partial<Movimiento> & { solicitudId?: number }): Promise<{
-    message: string;
-    data: Movimiento;
-  }> => {
-    const response = await axios.post(`${API_URL}`, data);
-    return response.data;
+  rechazar: async (id: number, aprobadorId: number, observaciones?: string): Promise<Movimiento> => {
+    return movimientoService.aprobarRechazar(id, {
+      estado: 'RECHAZADO',
+      aprobadorId,
+      observaciones
+    });
   }
 };

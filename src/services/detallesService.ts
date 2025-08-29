@@ -1,72 +1,54 @@
 import axios from "@/lib/axios";
-import { Detalles } from '../types/detalles.types';
+import { Detalles, DetallesFiltros, DetallesResponse, DetallesListResponse, EstadisticasDetalles } from '../types/detalles.types';
 
 const API_URL = '/detalles';
 
-export interface DetallesResponse {
-  message: string;
-  data: Detalles | Detalles[];
-}
-
-export interface CreateDetallesDto {
-  cantidad: number;
-  materialId: number;
-  solicitudId: number;
-  numeroFactura?: string;
-  accion?: string;
-  solicitanteId?: number;
-}
-
 export const detallesService = {
-  crear: async (data: CreateDetallesDto): Promise<DetallesResponse> => {
-    const response = await axios.post<DetallesResponse>(API_URL, data);
-    return response.data;
+  // Obtener todos los detalles con filtros opcionales
+  obtenerTodos: async (filtros?: DetallesFiltros): Promise<Detalles[]> => {
+    let url = API_URL;
+    if (filtros) {
+      const params = new URLSearchParams();
+      Object.entries(filtros).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params.append(key, value.toString());
+        }
+      });
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+    }
+    const response = await axios.get<DetallesListResponse>(url);
+    return response.data.data;
   },
 
-  obtenerTodos: async (): Promise<DetallesResponse> => {
-    const response = await axios.get<DetallesResponse>(API_URL);
-    return response.data;
-  },
-
-  obtenerPorId: async (id: number): Promise<DetallesResponse> => {
+  // Obtener detalle por ID
+  obtenerPorId: async (id: number): Promise<Detalles> => {
     const response = await axios.get<DetallesResponse>(`${API_URL}/${id}`);
-    return response.data;
+    return response.data.data;
   },
 
-  actualizar: async (id: number, data: Partial<CreateDetallesDto>): Promise<DetallesResponse> => {
-    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}`, data);
-    return response.data;
+  // Obtener detalles por estado
+  obtenerPorEstado: async (estado: 'NO_APROBADO' | 'APROBADO' | 'RECHAZADO'): Promise<Detalles[]> => {
+    const response = await axios.get<DetallesListResponse>(`${API_URL}/estado/${estado}`);
+    return response.data.data;
   },
 
-  aprobar: async (id: number, personaApruebaId: number, options?: { noCrearSolicitud?: boolean }) => {
-    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/aprobar`, { personaApruebaId, ...options });
-    return response.data;
+  // Obtener detalles por movimiento
+  obtenerPorMovimiento: async (movimientoId: number): Promise<Detalles[]> => {
+    const response = await axios.get<DetallesListResponse>(`${API_URL}/movimiento/${movimientoId}`);
+    return response.data.data;
   },
 
-  rechazar: async (id: number, personaApruebaId: number): Promise<DetallesResponse> => {
-    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/rechazar`, { personaApruebaId });
-    return response.data;
+  // Obtener historial de un material
+  obtenerHistorialMaterial: async (materialId: number): Promise<Detalles[]> => {
+    const response = await axios.get<DetallesListResponse>(`${API_URL}/material/${materialId}/historial`);
+    return response.data.data;
   },
 
-  obtenerHistorialCompleto: async (): Promise<DetallesResponse> => {
-    const response = await axios.get<DetallesResponse>(`${API_URL}/historial`);
-    return response.data;
-  },
-
-  obtenerHistorialPorPersona: async (personaId: number): Promise<DetallesResponse> => {
-    const response = await axios.get<DetallesResponse>(`${API_URL}/historial/persona/${personaId}`);
-    return response.data;
-  },
-  eliminar: async (id: number): Promise<DetallesResponse> => {
-    const response = await axios.delete<DetallesResponse>(`${API_URL}/${id}`);
-    return response.data;
-  },
-  entregar: async (id: number, personaId: number): Promise<DetallesResponse> => {
-    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/entregar`, { personaId });
-    return response.data;
-  },
-  devolver: async (id: number, personaId: number): Promise<DetallesResponse> => {
-    const response = await axios.patch<DetallesResponse>(`${API_URL}/${id}/devolver`, { personaId });
-    return response.data;
+  // Obtener estadísticas
+  obtenerEstadisticas: async (): Promise<EstadisticasDetalles> => {
+    const response = await axios.get<{message: string, data: EstadisticasDetalles}>(`${API_URL}/estadisticas`);
+    return response.data.data;
   }
 };

@@ -11,7 +11,6 @@ import {useMovimiento} from "../hooks/useMovimiento";
 import {useMunicipio} from "../hooks/useMunicipio";
 import {usePersona} from "../hooks/usePersona";
 import {useSitio} from "../hooks/useSitio";
-import {useSolicitud} from "../hooks/useSolicitud";
 import {useDetalles} from "../hooks/useDetalles";
 
 const ReportesPage: React.FC = () => {
@@ -29,7 +28,6 @@ const ReportesPage: React.FC = () => {
   const { municipios } = useMunicipio();
   const { personas } = usePersona();
   const { sitios } = useSitio();
-  const { solicitudes } = useSolicitud();
   const { detalles } = useDetalles();
 
   const dataMap: Record<string, any[]> = {
@@ -41,7 +39,6 @@ const ReportesPage: React.FC = () => {
     municipios,
     personas,
     sitios,
-    solicitudes,
     detalles,
   };
 
@@ -103,16 +100,9 @@ const ReportesPage: React.FC = () => {
       color: "bg-pink-500",
     },
     {
-      id: "solicitudes",
-      title: "Reporte de Solicitudes",
-      description: "Historial completo de solicitudes y su estado",
-      icon: <FileText className="h-8 w-8" />,
-      color: "bg-yellow-500",
-    },
-    {
-      id: "historialDetalles",
-      title: "Reporte de Detalles",
-      description: "Detalles históricos de todas las transacciones",
+      id: "detalles",
+      title: "Reporte de Detalles de Movimientos",
+      description: "Detalles históricos de todos los movimientos",
       icon: <FileText className="h-8 w-8" />,
       color: "bg-gray-500",
     },
@@ -125,7 +115,7 @@ const ReportesPage: React.FC = () => {
     let filteredData = data;
     if (creationFrom || creationTo || expirationFrom || expirationTo) {
       filteredData = data.filter((item: any) => {
-        const createdAt = item.createdAt ? new Date(item.createdAt) : null;
+        const createdAt = item.createdAt || item.fechaCreacion ? new Date(item.createdAt || item.fechaCreacion) : null;
         const expiresAt = item.expiresAt ? new Date(item.expiresAt) : null;
         
         let passesCreationFilter = true;
@@ -177,12 +167,11 @@ const ReportesPage: React.FC = () => {
         centros: ['id', 'nombre', 'direccion', 'telefono', 'municipio'],
         fichas: ['id', 'numero', 'nombre', 'estado', 'fechaInicio', 'fechaFin'],
         materiales: ['id', 'nombre', 'descripcion', 'stock', 'stockMinimo', 'precio'],
-        movimientos: ['id', 'tipo', 'cantidad', 'fecha', 'material', 'sitio'],
+        movimientos: ['id', 'tipoMovimiento', 'cantidad', 'fechaCreacion', 'material', 'personaSolicitante', 'estado'],
         municipios: ['id', 'nombre', 'departamento', 'codigo'],
         personas: ['id', 'nombre', 'apellido', 'documento', 'email', 'telefono'],
         sitios: ['id', 'nombre', 'descripcion', 'ubicacion', 'tipo'],
-        solicitudes: ['id', 'fecha', 'estado', 'solicitante', 'aprobador'],
-        historialDetalles: ['id', 'fecha', 'accion', 'usuario', 'descripcion']
+        detalles: ['id', 'cantidad', 'material', 'movimiento', 'fechaCreacion']
       };
       
       const preferredColumns = moduleColumns[module] || [];
@@ -229,7 +218,7 @@ const ReportesPage: React.FC = () => {
     // Función para agregar encabezados de tabla
     const addTableHeaders = (y: number) => {
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold'); // Cambiar de undefined a 'helvetica'
+      doc.setFont('helvetica', 'bold');
       
       columns.forEach((column, index) => {
         const x = 20 + (index * columnWidth);
@@ -238,7 +227,7 @@ const ReportesPage: React.FC = () => {
       
       // Línea debajo del encabezado
       doc.line(20, y + 2, 200, y + 2);
-      doc.setFont('helvetica', 'normal'); // Cambiar de undefined a 'helvetica'
+      doc.setFont('helvetica', 'normal');
       
       return y + headerHeight;
     };
@@ -281,10 +270,10 @@ const ReportesPage: React.FC = () => {
     
     yPosition += 10;
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold'); // Cambiar de undefined a 'helvetica'
+    doc.setFont('helvetica', 'bold');
     doc.text('Resumen del Reporte:', 20, yPosition);
     
-    doc.setFont('helvetica', 'normal'); // Cambiar de undefined a 'helvetica'
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     yPosition += 8;
     doc.text(`• Total de registros: ${filteredData.length}`, 25, yPosition);

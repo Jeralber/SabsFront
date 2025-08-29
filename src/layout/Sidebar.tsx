@@ -124,7 +124,7 @@ export const Sidebar = ({ isOpen }: Omit<SidebarProps, 'toggleSidebar'>) => {
       ]
     },
     {
-      title: 'Gestión Inventario',
+      title: 'Movimientos',
       icon: <FaExchangeAlt className="w-5 h-5" />,
       path: '/gestion-inventario',
       module: 'inventario'

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { DataTable } from '../components/molecules/DataTable';
 import { GenericForm, FieldDefinition } from '../components/molecules/GenericForm';
 import { useSede } from '../hooks/useSede';
-import { useCentro } from '../hooks/useCentro';
 import { Sede } from '../types/sede.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Building, MapPin, Hash, Calendar, Clock, CheckCircle, XCircle, Settings, ExternalLink } from 'lucide-react';
@@ -29,7 +28,7 @@ const SedePage: React.FC = () => {
     fetchSedes
   } = useSede();
 
-  const { centros } = useCentro();
+
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSede, setEditingSede] = useState<Sede | null>(null);
@@ -69,19 +68,7 @@ const SedePage: React.FC = () => {
         </div>
       )
     },
-    {
-      accessorKey: 'centro',
-      header: 'Centro',
-      sortable: false,
-      cell: (row: Sede) => (
-        <div className="flex items-center gap-2">
-          <Settings className="h-4 w-4 text-purple-500" />
-          <span className="text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">
-            {row.centro?.nombre || 'Sin centro'}
-          </span>
-        </div>
-      )
-    },
+
     {
       accessorKey: 'activo',
       header: 'Estado',
@@ -143,16 +130,6 @@ const SedePage: React.FC = () => {
       label: 'Dirección',
       type: 'text',
       required: true
-    },
-    {
-      name: 'centroId',
-      label: 'Centro',
-      type: 'select',
-      required: false,
-      options: centros.map(centro => ({
-        label: centro.nombre,
-        value: centro.id
-      }))
     },
     {
       name: 'activo',

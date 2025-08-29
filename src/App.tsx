@@ -18,7 +18,7 @@ import CentroPage from "./pages/CentroPage";
 import { Layout } from "@/layout/layout";
 import "@/styles/globals.css";
 import TipoSitioPage from "./pages/TipoSitioPage";
-import GestionInventarioPage from "./pages/GestionInventarioPage";
+import MovimientoPage from "./pages/MovimientoPage"; // Ahora será la página principal de inventario
 import TipoMaterialPage from "./pages/TipoMaterialPage";
 import CategoriaMaterialPage from "./pages/CategoriaMaterialPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
@@ -27,7 +27,7 @@ import AcercaDePage from "./pages/AcercaDePage";
 import BodegaPage from "./pages/BodegaPage";
 import SitiosPorTipoPage from "./pages/SitiosPorTipoPage";
 import MaterialesPorSitioPage from "./pages/MaterialesPorSitioPage";
-import HistorialDetallesPage from "./pages/HistorialDetallesPage";
+// Eliminada: import HistorialDetallesPage from "./pages/HistorialDetallesPage";
 import ReportesPage from "./pages/ReportesPage";
 import GraficosPage from "./pages/GraficosPage";
 import ModulosPage from "./pages/ModulosPage";
@@ -43,7 +43,10 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/reset-password/:token" element={<PasswordRecoveryPage />} />
+          <Route
+            path="/reset-password/:token"
+            element={<PasswordRecoveryPage />}
+          />
           <Route
             path="/"
             element={
@@ -79,14 +82,14 @@ function App() {
             />
 
             <Route
-              path="/historial-detalles"
+              path="/gestion-inventario"
               element={
-                <ProtectedRoute module="historialdetalles">
-                  <HistorialDetallesPage />
+                <ProtectedRoute module="inventario">
+                  <MovimientoPage />{" "}
+                  {/* Ahora MovimientoPage es la página principal de inventario */}
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="personas"
               element={
@@ -191,15 +194,6 @@ function App() {
               element={
                 <ProtectedRoute module="areacentros">
                   <AreaCentroPage />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/gestion-inventario"
-              element={
-                <ProtectedRoute module="inventario">
-                  <GestionInventarioPage />
                 </ProtectedRoute>
               }
             />

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { addToast } from "@heroui/react";
-import { Edit, Trash2, ExternalLink, Package, Tag, Ruler, Link2, Hash, FileText, Archive, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { Edit, Trash2, ExternalLink, Package, Tag, Ruler, Link2, Hash, FileText, Archive, Calendar, CheckCircle, XCircle, Package2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Swal from 'sweetalert2';
 import { Material } from "../types/material.types";
@@ -16,6 +16,7 @@ import {
   GenericForm,
   FieldDefinition,
 } from "../components/molecules/GenericForm";
+import { StockManagementModal } from "../components/organisms/StockManagementModal";
 
 // Definir el tipo Column localmente
 type Column<T> = {
@@ -40,6 +41,8 @@ const MaterialPage: React.FC = () => {
 
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [selectedMaterialForStock, setSelectedMaterialForStock] = useState<Material | null>(null);
 
   // Funciones de navegación
   const handleNavigateToTipoMaterial = (
@@ -72,18 +75,6 @@ const MaterialPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <Hash className="h-4 w-4 text-gray-500" />
           <span className="font-mono text-sm">{row.id}</span>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "codigo",
-      header: "Código",
-      sortable: true,
-      width: "120px",
-      cell: (row: Material) => (
-        <div className="flex items-center gap-2">
-          <Tag className="h-4 w-4 text-blue-500" />
-          <span className="font-mono text-sm">{row.codigo}</span>
         </div>
       ),
     },
@@ -150,25 +141,7 @@ const MaterialPage: React.FC = () => {
         </div>
       ),
     },
-    {
-      accessorKey: "stock",
-      header: "Stock",
-      sortable: true,
-      cell: (row: Material) => (
-        <span
-          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-            row.stock > 10
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : row.stock > 0
-                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-          }`}
-        >
-          <Package className="h-3 w-3" />
-          {row.stock}
-        </span>
-      ),
-    },
+    
     {
       accessorKey: "tipoMaterial",
       header: "Tipo",
@@ -302,12 +275,6 @@ const MaterialPage: React.FC = () => {
 
   const formFields: FieldDefinition<Material>[] = [
     {
-      name: "codigo",
-      label: "Código de Material",
-      type: "text",
-      required: true,
-    },
-    {
       name: "nombre",
       label: "Nombre del Material",
       type: "text",
@@ -329,12 +296,13 @@ const MaterialPage: React.FC = () => {
         label: sitio.nombre
       })),
     },
-    {
-      name: "stock",
-      label: "Stock",
-      type: "number",
-      required: true,
-    },
+    // ❌ ELIMINADO: Campo stock obsoleto
+    // {
+    //   name: "stock",
+    //   label: "Stock",
+    //   type: "number",
+    //   required: true,
+    // },
     {
       name: "unidadMedidaId",
       label: "Unidad de Medida",
@@ -384,6 +352,20 @@ const MaterialPage: React.FC = () => {
       required: false,
     },
   ];
+  const handleManageStock = (material: Material) => {
+  setSelectedMaterialForStock(material);
+  setIsStockModalOpen(true);
+};
+
+const handleCloseStockModal = () => {
+  setIsStockModalOpen(false);
+  setSelectedMaterialForStock(null);
+};
+
+const handleStockUpdated = async () => {
+  // Recargar la lista de materiales para actualizar el stock total
+  await fetchMateriales();
+};
 
   const handleCreate = () => {
     setEditingMaterial(null);
@@ -473,6 +455,12 @@ const MaterialPage: React.FC = () => {
   };
 
   const actions = [
+    {
+    label: "Gestionar Stock",
+    icon: <Package2 size={16} />,
+    onClick: handleManageStock,
+    variant: "secondary" as const,
+  },
     {
       label: "Editar",
       icon: <Edit size={16} />,
@@ -604,13 +592,21 @@ const MaterialPage: React.FC = () => {
             editingMaterial || {
               nombre: "",
               descripcion: "",
-              stock: 0,
               caduca: false,
               activo: true,
             }
           }
           onSubmit={handleSubmit}
           onCancel={handleCancel}
+        />
+      )}
+
+      {selectedMaterialForStock && (
+        <StockManagementModal
+          isOpen={isStockModalOpen}
+          onClose={handleCloseStockModal}
+          material={selectedMaterialForStock} // Cambio: pasar el objeto Material completo
+          onStockUpdated={handleStockUpdated}
         />
       )}
     </div>

@@ -2,11 +2,9 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMaterial } from '../hooks/useMaterial';
 import { useMovimiento } from '../hooks/useMovimiento';
-import { useSolicitud } from '../hooks/useSolicitud';
 import { useSitio } from '../hooks/useSitio';
 import { Material } from '../types/material.types';
 import { Movimiento } from '../types/movimiento.types';
-import { Solicitud } from '../types/solicitud.types';
 import { Card, CardBody, CardHeader } from '@heroui/react';
 import { Package, User, Calendar, ArrowLeft, AlertCircle } from 'lucide-react';
 
@@ -15,10 +13,9 @@ const MaterialesPorSitioPage: React.FC = () => {
   const navigate = useNavigate();
   const { materiales, loading: matLoading, error: matError } = useMaterial();
   const { movimientos, loading: movLoading, error: movError } = useMovimiento();
-  const { solicitudes, loading: solLoading, error: solError } = useSolicitud();
   const { sitios } = useSitio();
 
-  if (matLoading || movLoading || solLoading) {
+  if (matLoading || movLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -29,7 +26,7 @@ const MaterialesPorSitioPage: React.FC = () => {
     );
   }
 
-  if (matError || movError || solError) {
+  if (matError || movError) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -38,7 +35,7 @@ const MaterialesPorSitioPage: React.FC = () => {
             Error al cargar los datos
           </div>
           <div className="text-gray-600 dark:text-gray-400">
-            {matError || movError || solError}
+            {matError || movError}
           </div>
         </div>
       </div>
@@ -73,12 +70,15 @@ const MaterialesPorSitioPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {materialesFiltrados.map((mat: Material) => {
+          const stockTotal = mat.stocks 
+            ? mat.stocks.filter(stock => stock.activo).reduce((total, stock) => total + stock.cantidad, 0)
+            : 0;
+            
           const movsRelacionados: Movimiento[] = movimientos.filter(
             (mov: Movimiento) => mov.materialId === mat.id
           );
-          const pendingSolicitudes = solicitudes.filter(
-            sol => sol.estado === 'PENDIENTE' && 
-            sol.detalles?.some(det => det.materialId === mat.id)
+          const movimientosPendientes = movimientos.filter(
+            mov => mov.estado === 'NO_APROBADO' && mov.materialId === mat.id
           );
 
           return (
@@ -92,13 +92,13 @@ const MaterialesPorSitioPage: React.FC = () => {
                   <p className="text-sm text-gray-500">{mat.descripcion}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      mat.stock > 10
+                      stockTotal > 10
                         ? "bg-green-100 text-green-800"
-                        : mat.stock > 0
+                        : stockTotal > 0
                         ? "bg-yellow-100 text-yellow-800"
                         : "bg-red-100 text-red-800"
                     }`}>
-                      Stock: {mat.stock}
+                      Stock: {stockTotal}
                     </span>
                   </div>
                 </div>
@@ -126,46 +126,50 @@ const MaterialesPorSitioPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Movimientos aprobados */}
+                {/* Movimientos relacionados */}
                 {movsRelacionados.length > 0 && (
                   <div className="mb-4">
-                    <h3 className="text-sm font-semibold mb-2">Movimientos Recibidos en este Sitio:</h3>
-                    {movsRelacionados.map((mov: Movimiento) => (
+                    <h3 className="text-sm font-semibold mb-2">Movimientos de este Material:</h3>
+                    {movsRelacionados.slice(0, 3).map((mov: Movimiento) => (
                       <div key={mov.id} className={`mt-2 p-2 rounded ${
-                        mov.estado === 'PRESTADO' ? 'bg-orange-100 text-orange-800' :
-                        mov.estado === 'DEVUELTO' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
+                        mov.estado === 'APROBADO' ? 'bg-green-100 text-green-800' :
+                        mov.estado === 'RECHAZADO' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
                       }`}>
                         <p className="font-medium">
-                          {mov.tipoMovimiento?.nombre}: {mov.cantidad} unidades de {mov.material?.nombre}
+                          {mov.tipoMovimiento?.nombre}: {mov.cantidad} unidades
                         </p>
                         <p className="text-sm">
                           Estado: <span className="font-semibold">{mov.estado}</span>
                         </p>
                         <p className="text-sm">
-                          Ejecutado por: {mov.persona?.nombre} {mov.persona?.apellido}
+                          Solicitante: {mov.solicitante?.nombre} {mov.solicitante?.apellido}
                         </p>
-                        {mov.solicitud && (
-                          <div className="text-sm text-gray-600 mt-1">
-                            <p>
-                              Solicitado por: {mov.solicitud.solicitante?.nombre} {mov.solicitud.solicitante?.apellido}
-                            </p>
-                          </div>
+                        {mov.sitioDestino && (
+                          <p className="text-sm">
+                            Destino: {mov.sitioDestino.nombre}
+                          </p>
                         )}
                       </div>
                     ))}
+                    {movsRelacionados.length > 3 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Y {movsRelacionados.length - 3} movimientos más...
+                      </p>
+                    )}
                   </div>
                 )}
 
-                {/* Solicitudes pendientes */}
-                {pendingSolicitudes.length > 0 && (
+                {/* Movimientos pendientes */}
+                {movimientosPendientes.length > 0 && (
                   <div className="mt-4">
-                    <h3 className="text-sm font-semibold mb-2">Solicitudes Pendientes:</h3>
-                    {pendingSolicitudes.map((sol: Solicitud) => (
-                      <div key={sol.id} className="mt-2 p-2 bg-yellow-100 rounded">
-                        <p className="text-sm">Descripción: {sol.descripcion}</p>
+                    <h3 className="text-sm font-semibold mb-2">Movimientos Pendientes:</h3>
+                    {movimientosPendientes.map((mov: Movimiento) => (
+                      <div key={mov.id} className="mt-2 p-2 bg-yellow-100 rounded">
+                        <p className="text-sm">Tipo: {mov.tipoMovimiento?.nombre}</p>
+                        <p className="text-sm">Cantidad: {mov.cantidad}</p>
                         <p className="text-sm">
-                          Solicitante: {sol.solicitante?.nombre} {sol.solicitante?.apellido}
+                          Solicitante: {mov.solicitante?.nombre} {mov.solicitante?.apellido}
                         </p>
                       </div>
                     ))}

@@ -21,10 +21,10 @@ export interface Persona {
   // Relaciones
   rol?: Rol;
   ficha?: Ficha;
-  encargos?: Detalles[];
-  solicitudes?: Detalles[];
-  aprobaciones?: Detalles[];
-  movimientos?: Movimiento[];
+  movimientosSolicitados?: Movimiento[]; // Movimientos que ha solicitado
+  movimientosAprobados?: Movimiento[]; // Movimientos que ha aprobado
+  detallesSolicitados?: Detalles[]; // Detalles de movimientos solicitados
+  detallesAprobados?: Detalles[]; // Detalles de movimientos aprobados
 }
 
 

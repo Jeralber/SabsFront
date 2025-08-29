@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
-import { Detalles } from '../types/detalles.types';
-import { detallesService, CreateDetallesDto } from '../services/detallesService';
+import { Detalles, DetallesFiltros, EstadisticasDetalles } from '../types/detalles.types';
+import { detallesService } from '../services/detallesService';
 
 interface UseDetallesState {
   detalles: Detalles[];
-  historial: any[]; // Agregar para el historial
+  historialMaterial: Detalles[];
+  estadisticas: EstadisticasDetalles | null;
   selectedDetalle: Detalles | null;
   loading: boolean;
   error: string | null;
@@ -13,19 +14,20 @@ interface UseDetallesState {
 export const useDetalles = () => {
   const [state, setState] = useState<UseDetallesState>({
     detalles: [],
-    historial: [], // Agregar
+    historialMaterial: [],
+    estadisticas: null,
     selectedDetalle: null,
     loading: false,
     error: null
   });
 
-  const fetchDetalles = useCallback(async () => {
+  const fetchDetalles = useCallback(async (filtros?: DetallesFiltros) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.obtenerTodos();
+      const response = await detallesService.obtenerTodos(filtros);
       setState(prev => ({
         ...prev,
-        detalles: Array.isArray(response.data) ? response.data : [],
+        detalles: Array.isArray(response) ? response : [],
         loading: false
       }));
     } catch (error) {
@@ -43,7 +45,7 @@ export const useDetalles = () => {
       const response = await detallesService.obtenerPorId(id);
       setState(prev => ({
         ...prev,
-        selectedDetalle: response.data as Detalles,
+        selectedDetalle: response,
         loading: false
       }));
     } catch (error) {
@@ -55,174 +57,75 @@ export const useDetalles = () => {
     }
   }, []);
 
-  const createDetalle = useCallback(async (detalle: CreateDetallesDto) => {
+  const fetchDetallesPorEstado = useCallback(async (estado: 'NO_APROBADO' | 'APROBADO' | 'RECHAZADO') => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.crear(detalle);
+      const response = await detallesService.obtenerPorEstado(estado);
       setState(prev => ({
         ...prev,
-        detalles: [...prev.detalles, response.data as Detalles],
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al crear detalle';
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const updateDetalle = useCallback(async (id: number, detalle: Partial<CreateDetallesDto>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await detallesService.actualizar(id, detalle);
-      const updatedDetalle = response.data as Detalles;
-      setState(prev => ({
-        ...prev,
-        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
-        selectedDetalle: prev.selectedDetalle?.id === id ? updatedDetalle : prev.selectedDetalle,
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al actualizar detalle con ID ${id}`;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const deleteDetalle = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      await detallesService.eliminar(id);
-      setState(prev => ({
-        ...prev,
-        detalles: prev.detalles.filter(d => d.id !== id),
-        selectedDetalle: prev.selectedDetalle?.id === id ? null : prev.selectedDetalle,
+        detalles: Array.isArray(response) ? response : [],
         loading: false
       }));
     } catch (error) {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : `Error al eliminar detalle con ID ${id}`
+        error: error instanceof Error ? error.message : `Error al cargar detalles con estado ${estado}`
       }));
     }
   }, []);
 
-  const aprobarDetalle = useCallback(async (id: number, personaApruebaId: number) => {
+  const fetchDetallesPorMovimiento = useCallback(async (movimientoId: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.aprobar(id, personaApruebaId, { noCrearSolicitud: true }); // Agregar flag si backend lo soporta
-      const updatedDetalle = response.data as Detalles;
+      const response = await detallesService.obtenerPorMovimiento(movimientoId);
       setState(prev => ({
         ...prev,
-        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al aprobar detalle con ID ${id}`;
-      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const rechazarDetalle = useCallback(async (id: number, personaApruebaId: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await detallesService.rechazar(id, personaApruebaId);
-      const updatedDetalle = response.data as Detalles;
-      setState(prev => ({
-        ...prev,
-        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al rechazar detalle con ID ${id}`;
-      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const fetchHistorialCompleto = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await detallesService.obtenerHistorialCompleto();
-      setState(prev => ({
-        ...prev,
-        historial: Array.isArray(response.data) ? response.data : [],
+        detalles: Array.isArray(response) ? response : [],
         loading: false
       }));
     } catch (error) {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : 'Error al cargar historial'
+        error: error instanceof Error ? error.message : `Error al cargar detalles del movimiento ${movimientoId}`
       }));
     }
   }, []);
 
-  const fetchHistorialPorPersona = useCallback(async (personaId: number) => {
+  const fetchHistorialMaterial = useCallback(async (materialId: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.obtenerHistorialPorPersona(personaId);
+      const response = await detallesService.obtenerHistorialMaterial(materialId);
       setState(prev => ({
         ...prev,
-        historial: Array.isArray(response.data) ? response.data : [],
+        historialMaterial: Array.isArray(response) ? response : [],
         loading: false
       }));
     } catch (error) {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : `Error al cargar historial de persona ${personaId}`
+        error: error instanceof Error ? error.message : `Error al cargar historial del material ${materialId}`
       }));
     }
   }, []);
 
-  const entregarDetalle = useCallback(async (id: number, personaId: number) => {
+  const fetchEstadisticas = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await detallesService.entregar(id, personaId);
-      const updatedDetalle = response.data as Detalles;
+      const response = await detallesService.obtenerEstadisticas();
       setState(prev => ({
         ...prev,
-        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
+        estadisticas: response,
         loading: false
       }));
-      return response;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al entregar detalle con ID ${id}`;
-      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const devolverDetalle = useCallback(async (id: number, personaId: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await detallesService.devolver(id, personaId);
-      const updatedDetalle = response.data as Detalles;
       setState(prev => ({
         ...prev,
-        detalles: prev.detalles.map(d => d.id === id ? updatedDetalle : d),
-        loading: false
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al cargar estadísticas'
       }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al devolver detalle con ID ${id}`;
-      setState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      throw new Error(errorMessage);
     }
   }, []);
 
@@ -230,14 +133,9 @@ export const useDetalles = () => {
     ...state,
     fetchDetalles,
     fetchDetalleById,
-    createDetalle,
-    updateDetalle,
-    deleteDetalle,
-    aprobarDetalle,
-    rechazarDetalle,
-    fetchHistorialCompleto,
-    fetchHistorialPorPersona,
-    devolverDetalle,
-    entregarDetalle
+    fetchDetallesPorEstado,
+    fetchDetallesPorMovimiento,
+    fetchHistorialMaterial,
+    fetchEstadisticas
   };
 };

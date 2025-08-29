@@ -29,7 +29,6 @@ import { useRol } from '../hooks/useRol';
 import { useRolPermisoOpcion } from '../hooks/useRolPermisoOpcion';
 import { useSede } from '../hooks/useSede';
 import { useSitio } from '../hooks/useSitio';
-import { useSolicitud } from '../hooks/useSolicitud';
 import { useTipoMaterial } from '../hooks/useTipoMaterial';
 import { useTipoMovimiento } from '../hooks/useTipoMovimiento';
 import { useTipoSitio } from '../hooks/useTipoSitio';
@@ -71,14 +70,13 @@ function GraficosPage() {
   const { rolPermisosOpciones } = useRolPermisoOpcion();
   const { sedes } = useSede();
   const { sitios } = useSitio();
-  const { solicitudes } = useSolicitud();
   const { tiposMaterial } = useTipoMaterial();
   const { tiposMovimiento } = useTipoMovimiento();
   const { tiposSitio } = useTipoSitio();
   const { titulados } = useTitulado();
   const { unidadesMedida } = useUnidadMedida();
 
-  // Mapa de datos por módulo
+  // Mapa de datos por módulo (eliminando Solicitud)
   const dataMap: { [key: string]: any[] } = {
     Area: areas,
     AreaCentro: areasCentro,
@@ -97,7 +95,6 @@ function GraficosPage() {
     RolPermisoOpcion: rolPermisosOpciones,
     Sede: sedes,
     Sitio: sitios,
-    Solicitud: solicitudes,
     TipoMaterial: tiposMaterial,
     TipoMovimiento: tiposMovimiento,
     TipoSitio: tiposSitio,
@@ -196,11 +193,22 @@ function GraficosPage() {
   const getMaterialesStockChart = () => {
     if (selectedModule !== 'Material') return null;
     
-    const materialesConStock = materiales.map(material => ({
-      nombre: material.nombre,
-      stock: material.stock || 0,
-      stockMinimo: material.stock || 0
-    })).filter(item => item.stock > 0);
+    const materialesConStock = materiales.map(material => {
+      // ❌ OBSOLETO:
+      // stock: material.stock || 0,
+      // stockMinimo: material.stock || 0
+      
+      // ✅ CORRECTO: Calcular stock total de Stock entities
+      const stockTotal = material.stocks 
+        ? material.stocks.filter(stock => stock.activo).reduce((total, stock) => total + stock.cantidad, 0)
+        : 0;
+      
+      return {
+        nombre: material.nombre,
+        stock: stockTotal,
+        stockMinimo: stockTotal // O definir un valor mínimo específico
+      };
+    }).filter(item => item.stock > 0);
 
     return {
       labels: materialesConStock.map(item => item.nombre),

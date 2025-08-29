@@ -1,18 +1,17 @@
 
 import { useAuth } from "@/hooks/useAuth";
-import { useSolicitud } from "@/hooks/useSolicitud";
+import { useMovimiento } from "@/hooks/useMovimiento";
 import { useMaterial } from "@/hooks/useMaterial";
 import { usePersona } from "@/hooks/usePersona";
 import { useEffect, useState } from "react";
 
 export const Dashboard = () => {
   const { user } = useAuth();
-  const { solicitudes } = useSolicitud();
+  const { movimientos } = useMovimiento();
   const { materiales } = useMaterial();
   const { personas } = usePersona();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
- 
   const carouselImages = [
     "/imagen1.png",
     "/imagen2.jpg",
@@ -21,7 +20,6 @@ export const Dashboard = () => {
     "/imagen5.jpg"
   ];
 
-  
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => 
@@ -32,8 +30,10 @@ export const Dashboard = () => {
     return () => clearInterval(interval);
   }, [carouselImages.length]);
 
-  
-  const solicitudesPendientes = solicitudes.filter(s => s.estado === 'PENDIENTE').length;
+  // Estadísticas basadas en movimientos
+  const movimientosPendientes = movimientos.filter(m => m.estado === 'NO_APROBADO').length;
+  const movimientosAprobados = movimientos.filter(m => m.estado === 'APROBADO').length;
+  const movimientosRechazados = movimientos.filter(m => m.estado === 'RECHAZADO').length;
   const materialesDisponibles = materiales.filter(m => m.activo).length;
   const usuariosActivos = personas.filter(p => p.activo).length;
 
@@ -74,7 +74,6 @@ export const Dashboard = () => {
           ))}
         </div>
         
-
         <button 
           onClick={prevImage}
           className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
@@ -117,9 +116,9 @@ export const Dashboard = () => {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Solicitudes Pendientes</p>
-              <p className="text-2xl font-bold text-gray-700 dark:text-white">{solicitudesPendientes}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Requieren atención</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Movimientos Pendientes</p>
+              <p className="text-2xl font-bold text-gray-700 dark:text-white">{movimientosPendientes}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Requieren aprobación</p>
             </div>
           </div>
         </div>
@@ -162,8 +161,8 @@ export const Dashboard = () => {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Solicitudes Aprobadas</p>
-              <p className="text-2xl font-bold text-gray-700 dark:text-white">{solicitudes.filter(s => s.estado === 'APROBADA').length}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Movimientos Aprobados</p>
+              <p className="text-2xl font-bold text-gray-700 dark:text-white">{movimientosAprobados}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Este mes</p>
             </div>
           </div>
@@ -171,15 +170,15 @@ export const Dashboard = () => {
         
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg transition-shadow">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400 mr-4">
+            <div className="p-3 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 mr-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Solicitudes Entregadas</p>
-              <p className="text-2xl font-bold text-gray-700 dark:text-white">{solicitudes.filter(s => s.estado === 'ENTREGADA').length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Completadas</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Movimientos Rechazados</p>
+              <p className="text-2xl font-bold text-gray-700 dark:text-white">{movimientosRechazados}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Rechazados</p>
             </div>
           </div>
         </div>
@@ -192,13 +191,13 @@ export const Dashboard = () => {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Eficiencia</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tasa de Aprobación</p>
               <p className="text-2xl font-bold text-gray-700 dark:text-white">
-                {solicitudes.length > 0 
-                  ? Math.round((solicitudes.filter(s => s.estado === 'ENTREGADA').length / solicitudes.length) * 100)
+                {movimientos.length > 0 
+                  ? Math.round((movimientosAprobados / movimientos.length) * 100)
                   : 0}%
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Tasa de entrega</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">De eficiencia</p>
             </div>
           </div>
         </div>
