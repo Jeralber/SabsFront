@@ -276,7 +276,7 @@ export default function PersonaPage() {
         await createPersona({
           ...processedData,
           activo: values.activo ?? true,
-          fechaCreacion: new Date(),
+    
         });
         addToast({
           title: "Persona creada",

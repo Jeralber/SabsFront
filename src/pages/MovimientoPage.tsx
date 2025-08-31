@@ -57,9 +57,8 @@ const MovimientoPage: React.FC = () => {
     aprobarMovimiento,
     rechazarMovimiento,
   } = useMovimiento();
-  const { tiposMovimiento } = useTipoMovimiento();
-  const { personas } = usePersona();
-  const { materiales, fetchMateriales } = useMaterial();
+  const { tiposMovimiento } = useTipoMovimiento();  const { personas } = usePersona();
+  const { materiales, fetchMyMaterials, fetchMaterialesPrestadosPendientes } = useMaterial();
   const { fetchDetallesPorMovimiento, loading: detallesLoading } =
     useDetalles();
 
@@ -77,20 +76,19 @@ const MovimientoPage: React.FC = () => {
   const crearEtiquetaMaterial = (material: any) => {
     const sitioInfo = material.sitio ? ` (${material.sitio.nombre})` : "";
     
-    // ✅ NUEVA LÓGICA: Mostrar stock total de Stock entities o cantidadPrestada
     let stockInfo = "";
     if (material.esOriginal === false && material.cantidadPrestada) {
-      stockInfo = ` - Prestado: ${material.cantidadPrestada}`;
+      stockInfo = ` - Pendiente de devolver: ${material.cantidadPrestada}`;
     } else if (material.stocks && material.stocks.length > 0) {
       const stockTotal = material.stocks
         .filter((stock: any) => stock.activo)
         .reduce((total: number, stock: any) => total + stock.cantidad, 0);
-      stockInfo = ` - Stock: ${stockTotal}`;
+      stockInfo = ` - Stock disponible: ${stockTotal}`;
     } else {
       stockInfo = " - Sin stock asignado";
     }
     
-    const tipoInfo = material.esOriginal === false ? " [PRESTADO]" : "";
+    const tipoInfo = material.esOriginal === false ? " [PRÉSTAMO]" : "";
     return `${material.nombre}${sitioInfo}${stockInfo}${tipoInfo}`;
   };
   const getSitioOrigenMaterial = (materialId: number): number | null => {
@@ -117,28 +115,45 @@ const MovimientoPage: React.FC = () => {
 
   const getMaterialesFiltrados = () => {
     if (tipoMovimientoSeleccionado === "peticion") {
-      return materialesUnicos.filter(
-        (material) => 
-          material.esOriginal !== false && 
-          material.stocks && 
-          material.stocks.some((stock: any) => stock.activo && stock.cantidad > 0)
+      const filtrados = materialesUnicos.filter(
+        (material) => {
+          const esOriginal = material.esOriginal !== false;
+          const tieneStocks = material.stocks && material.stocks.length > 0;
+          const tieneStockActivo = material.stocks && 
+            material.stocks.some((stock: any) => stock.activo && stock.cantidad > 0);
+          
+          return esOriginal && tieneStocks && tieneStockActivo;
+        }
       );
+      
+      return filtrados;
     } else if (tipoMovimientoSeleccionado === "devolver") {
-      return materialesUnicos.filter(
-        (material) =>
-          material.esOriginal === false &&
-          material.cantidadPrestada > 0 && // ✅ Usar cantidadPrestada
-          material.activo !== false
+      // Los materiales ya vienen filtrados del backend con saldo real pendiente
+      // Solo verificamos que estén activos
+      const filtrados = materialesUnicos.filter(
+        (material) => {
+          const estaActivo = material.activo !== false;
+          const tieneSaldoPendiente = material.cantidadPrestada > 0;
+          
+          return estaActivo && tieneSaldoPendiente;
+        }
       );
+      
+      return filtrados;
     } else if (tipoMovimientoSeleccionado === "prestamo") {
-      // Para préstamos, mostrar materiales originales con stock disponible
-      return materialesUnicos.filter(
-        (material) => 
-          material.esOriginal !== false && 
-          material.stocks && 
-          material.stocks.some((stock: any) => stock.activo && stock.cantidad > 0) // ✅ Verificar Stock entities
+      const filtrados = materialesUnicos.filter(
+        (material) => {
+          const esOriginal = material.esOriginal !== false;
+          const tieneStockActivo = material.stocks && 
+            material.stocks.some((stock: any) => stock.activo && stock.cantidad > 0);
+          
+          return esOriginal && tieneStockActivo;
+        }
       );
+      
+      return filtrados;
     }
+    
     return materialesUnicos;
   };
 
@@ -190,7 +205,7 @@ const MovimientoPage: React.FC = () => {
       
       // ✅ CORRECCIÓN: Actualización múltiple para asegurar sincronización
       await fetchMovimientos();
-      await fetchMateriales(); // Primera actualización inmediata
+      await fetchMyMaterials(); // Primera actualización inmediata
       
       if (mostrarSoloPendientes) {
         await fetchMovimientosPendientes();
@@ -198,7 +213,7 @@ const MovimientoPage: React.FC = () => {
       
       // ✅ NUEVO: Segunda actualización con delay para cantidadPrestada
       setTimeout(async () => {
-        await fetchMateriales();
+        await fetchMyMaterials();
       }, 1000);
       
       addToast({
@@ -343,15 +358,25 @@ const MovimientoPage: React.FC = () => {
   ];
 
   // Agregar un estado para el material seleccionado
-  const [materialSeleccionado] = useState<number | null>(null);
+  const [materialSeleccionado, setMaterialSeleccionado] = useState<number | null>(null);
+
+  // Agregar función para manejar cambio de material
+  const handleMaterialChange = (materialId: number) => {
+    setMaterialSeleccionado(materialId);
+  };
+
+  // Obtener el material actual seleccionado
+  const getMaterialActual = () => {
+    if (!materialSeleccionado) return null;
+    return materiales.find(m => m.id === materialSeleccionado);
+  };
 
   // useEffect principal para manejar cambios en tipo de movimiento
   useEffect(() => {
     fetchMovimientos();
-    if (tipoMovimientoSeleccionado === "devolver") {
-      fetchMateriales(); // Refrescar materiales para mostrar solo los prestados
-    }
-  }, [fetchMovimientos, fetchMateriales, tipoMovimientoSeleccionado]);
+    // ✅ CAMBIO: Siempre cargar materiales del usuario, no solo para devoluciones
+    fetchMyMaterials();
+  }, [fetchMovimientos, fetchMyMaterials, tipoMovimientoSeleccionado]);
 
   // useEffect para sitio destino automático en devoluciones
   useEffect(() => {
@@ -371,7 +396,7 @@ const MovimientoPage: React.FC = () => {
         value: material.id,
         label: crearEtiquetaMaterial(material),
       })),
-      // Eliminar la línea onChange que causa el error
+      onChange: (value: number) => handleMaterialChange(value)
     },
     // Mostrar sitio destino para peticiones y préstamos, información para devoluciones
     ...(tipoMovimientoSeleccionado === "peticion" ||
@@ -404,6 +429,11 @@ const MovimientoPage: React.FC = () => {
       label: "Cantidad",
       type: "number",
       required: true,
+      min: 1,
+      // Para devoluciones, usar cantidadPrestada como máximo
+      ...(tipoMovimientoSeleccionado === "devolver" && getMaterialActual() ? {
+        max: getMaterialActual()?.cantidadPrestada || 1
+      } : {})
     },
     {
       name: "observaciones" as keyof Movimiento,
@@ -456,8 +486,18 @@ const MovimientoPage: React.FC = () => {
     },
   ];
 
-  const handleTipoMovimientoSelect = (tipo: TipoMovimientoSeleccionado) => {
+  const handleTipoMovimientoSelect = async (tipo: TipoMovimientoSeleccionado) => {
     setTipoMovimientoSeleccionado(tipo);
+    
+    // Cargar materiales específicos según el tipo de movimiento
+    if (tipo === "devolver") {
+      // Para devoluciones, cargar solo materiales prestados con saldo pendiente
+      await fetchMaterialesPrestadosPendientes();
+    } else {
+      // Para otros tipos, cargar materiales normales del usuario
+      await fetchMyMaterials();
+    }
+    
     setIsFormOpen(true);
   };
 
@@ -554,7 +594,7 @@ const MovimientoPage: React.FC = () => {
       if (tipoMovimientoSeleccionado === "devolver") {
         // Esperar un momento para que se complete la transacción
         setTimeout(() => {
-          fetchMateriales();
+          fetchMyMaterials();
         }, 1000);
       }
 

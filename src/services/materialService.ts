@@ -69,4 +69,45 @@ export const materialService = {
     const response = await axios.delete<MaterialResponse>(`${API_URL}/${id}`);
     return response.data;
   },
+  
+  // ✅ NUEVO: Obtener materiales del usuario para movimientos
+  getMyMaterials: async (): Promise<MaterialResponse> => {
+    const timestamp = Date.now() + Math.random();
+    const response = await axios.get<MaterialResponse>(
+      `/materiales/mis-materiales?_t=${timestamp}`,
+      {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
+    );
+    return response.data;
+  },
+  
+  // ✅ NUEVO: Obtener stock de materiales del usuario
+  getMyStock: async (): Promise<Material[]> => {
+    const timestamp = Date.now() + Math.random();
+    const response = await axios.get<Material[]>(
+      `/materiales/mis-materiales/stock?_t=${timestamp}`
+    );
+    return response.data;
+  },
+
+  // ✅ AGREGAR: Método faltante para materiales prestados pendientes
+  getMaterialesPrestadosPendientes: async (): Promise<MaterialResponse> => {
+    const timestamp = Date.now() + Math.random();
+    const response = await axios.get<MaterialResponse>(
+      `/materiales/mis-materiales/prestados-pendientes?_t=${timestamp}`,
+      {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
+    );
+    return response.data;
+  },
 };

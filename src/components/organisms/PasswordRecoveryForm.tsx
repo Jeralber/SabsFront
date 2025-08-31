@@ -105,11 +105,8 @@ export const PasswordRecoveryForm = ({ onBackToLogin }: PasswordRecoveryFormProp
     
     // Usa 'resetToken' en lugar de useParams token
     const tokenToUse = resetToken || token;
-    console.log('Token to use:', tokenToUse); // Debug logging
-    console.log('resetToken:', resetToken, 'URL token:', token); // Debug logging
     
     if (!tokenToUse) {
-      console.error('No token available'); // Debug logging
       setError('Token no disponible. Por favor, solicita un nuevo enlace de recuperación.');
       return;
     }

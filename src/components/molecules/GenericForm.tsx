@@ -25,6 +25,7 @@ export type FieldDefinition<T> = {
   quickCreateTitle?: string;
   min?: number;
   max?: number;
+  onChange?: (value: any) => void; // ✅ AGREGAR ESTA LÍNEA
 };
 
 export type GenericFormProps<T> = {
