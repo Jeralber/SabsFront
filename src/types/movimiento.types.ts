@@ -35,7 +35,7 @@ export interface CreateMovimientoDto {
   cantidad: number;
   sitioDestinoId: number; 
   solicitanteId: number;
-  aprobadorId: number;
+  aprobadorId?: number; // Hacer opcional
   sitioOrigenId?: number;
   descripcion?: string; 
 }

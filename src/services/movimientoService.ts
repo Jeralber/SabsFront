@@ -16,8 +16,13 @@ export interface MovimientosFiltros {
 export const movimientoService = {
   // Crear nuevo movimiento
   crear: async (data: CreateMovimientoDto): Promise<Movimiento> => {
-    const response = await axios.post<MovimientoResponse>(API_URL, data);
-    return response.data.data;
+    try {
+      const response = await axios.post<MovimientoResponse>(API_URL, data);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error detallado:', error.response?.data);
+      throw error;
+    }
   },
 
   // Obtener todos los movimientos con filtros opcionales
@@ -52,7 +57,7 @@ export const movimientoService = {
 
   // Aprobar o rechazar movimiento
   aprobarRechazar: async (id: number, data: AprobarMovimientoDto): Promise<Movimiento> => {
-    const response = await axios.patch<MovimientoResponse>(`${API_URL}/${id}/aprobar-rechazar`, data);
+    const response = await axios.patch<MovimientoResponse>(`${API_URL}/${id}/aprobar`, data);
     return response.data.data;
   },
 
@@ -64,6 +69,24 @@ export const movimientoService = {
       observaciones
     });
   },
+   aprobarYCambiarEstadoMaterial: async (
+    movimientoId: number,
+    materialId: number,
+    estado: boolean,
+    aprobadorId: number,
+    observaciones?: string
+  ): Promise<any> => {
+    const response = await axios.patch(
+      `/movimientos/${movimientoId}/aprobar/material/${materialId}/estado/${estado}`,
+      {
+        aprobadorId,
+        observaciones,
+        estado: 'APROBADO'
+      }
+    );
+    return response.data;
+  },
+
 
   rechazar: async (id: number, aprobadorId: number, observaciones?: string): Promise<Movimiento> => {
     return movimientoService.aprobarRechazar(id, {
@@ -72,4 +95,6 @@ export const movimientoService = {
       observaciones
     });
   }
-};
+}
+  // ✅ NUEVO: Aprobar movimiento y cambiar estado del material
+ 

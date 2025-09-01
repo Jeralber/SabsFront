@@ -11,6 +11,7 @@ import { useMaterial } from "../hooks/useMaterial";
 import { useDetalles } from "../hooks/useDetalles";
 import { Movimiento, CreateMovimientoDto } from "../types/movimiento.types";
 import { Detalles } from "../types/detalles.types";
+
 import { addToast, Card, CardBody, Button } from "@heroui/react";
 import {
   ArrowUp,
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 import { useSitio } from "@/hooks/useSitio";
 import { useAuth } from "@/context/AuthContext";
+import { movimientoService } from "@/services/movimientoService";
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -38,6 +40,15 @@ type Column<T> = {
 };
 
 type TipoMovimientoSeleccionado = "peticion" | "devolver" | "prestamo" | null;
+
+type MovimientoFormField = FieldDefinition<Movimiento> | {
+  name: string;
+  label: string;
+  type: "text" | "select" | "number" | "checkbox";
+  required?: boolean;
+  readOnly?: boolean;
+  options?: { value: any; label: string }[];
+};
 
 const MovimientoPage: React.FC = () => {
   const { sitios } = useSitio();
@@ -58,7 +69,12 @@ const MovimientoPage: React.FC = () => {
     rechazarMovimiento,
   } = useMovimiento();
   const { tiposMovimiento } = useTipoMovimiento();  const { personas } = usePersona();
-  const { materiales, fetchMyMaterials, fetchMaterialesPrestadosPendientes } = useMaterial();
+  const { 
+    materiales, 
+    fetchMyMaterials, 
+    fetchMaterialesPrestadosPendientes,
+    refreshAfterDevolucion, // ✅ AGREGAR este método
+  } = useMaterial();
   const { fetchDetallesPorMovimiento, loading: detallesLoading } =
     useDetalles();
 
@@ -77,19 +93,29 @@ const MovimientoPage: React.FC = () => {
     const sitioInfo = material.sitio ? ` (${material.sitio.nombre})` : "";
     
     let stockInfo = "";
-    if (material.esOriginal === false && material.cantidadPrestada) {
-      stockInfo = ` - Pendiente de devolver: ${material.cantidadPrestada}`;
+    let estadoInfo = "";
+    
+    if (!material.activo) {
+      estadoInfo = " [INACTIVO]";
+    }
+    
+    if (material.esOriginal === false) {
+      if (material.cantidadPrestada && material.cantidadPrestada > 0) {
+        stockInfo = ` - Pendiente: ${material.cantidadPrestada}`;
+        estadoInfo = " [PRÉSTAMO ACTIVO]";
+      } else {
+        estadoInfo = " [PRÉSTAMO DEVUELTO]";
+      }
     } else if (material.stocks && material.stocks.length > 0) {
       const stockTotal = material.stocks
         .filter((stock: any) => stock.activo)
         .reduce((total: number, stock: any) => total + stock.cantidad, 0);
-      stockInfo = ` - Stock disponible: ${stockTotal}`;
+      stockInfo = ` - Stock: ${stockTotal}`;
     } else {
-      stockInfo = " - Sin stock asignado";
+      stockInfo = " - Sin stock";
     }
     
-    const tipoInfo = material.esOriginal === false ? " [PRÉSTAMO]" : "";
-    return `${material.nombre}${sitioInfo}${stockInfo}${tipoInfo}`;
+    return `${material.nombre}${sitioInfo}${stockInfo}${estadoInfo}`;
   };
   const getSitioOrigenMaterial = (materialId: number): number | null => {
     const material = materiales.find((m) => m.id === materialId);
@@ -158,6 +184,10 @@ const MovimientoPage: React.FC = () => {
   };
 
   const getTipoMovimientoId = () => {
+    // Log temporal para depuración
+    console.log('Tipos de movimiento disponibles:', tiposMovimiento.map(t => t.nombre));
+    console.log('Tipo seleccionado:', tipoMovimientoSeleccionado);
+    
     if (tipoMovimientoSeleccionado === "peticion") {
       const tipoSalida = tiposMovimiento.find(
         (tipo) =>
@@ -175,7 +205,8 @@ const MovimientoPage: React.FC = () => {
       return tipoDevolucion?.id;
     } else if (tipoMovimientoSeleccionado === "prestamo") {
       const tipoPrestamo = tiposMovimiento.find((tipo) =>
-        tipo.nombre.toLowerCase().includes("prestamo")
+        tipo.nombre.toLowerCase().includes("prestamo") ||
+        tipo.nombre.toLowerCase().includes("préstamo")
       );
       return tipoPrestamo?.id;
     }
@@ -201,20 +232,26 @@ const MovimientoPage: React.FC = () => {
     try {
       const aprobadorId = 1;
 
+      // ✅ OBTENER el movimiento antes de aprobarlo para saber el tipo
+      const movimiento = movimientos.find(m => m.id === movimientoId) || 
+                        movimientosPendientes.find(m => m.id === movimientoId);
+      
       await aprobarMovimiento(movimientoId, aprobadorId);
       
-      // ✅ CORRECCIÓN: Actualización múltiple para asegurar sincronización
+      // ✅ USAR método especializado según el tipo de movimiento
+      if (movimiento?.tipoMovimiento?.nombre === 'devolucion') {
+        // Para devoluciones, usar el método especializado
+        await refreshAfterDevolucion();
+      } else {
+        // Para otros tipos, usar método genérico
+        await fetchMyMaterials();
+      }
+      
       await fetchMovimientos();
-      await fetchMyMaterials(); // Primera actualización inmediata
       
       if (mostrarSoloPendientes) {
         await fetchMovimientosPendientes();
       }
-      
-      // ✅ NUEVO: Segunda actualización con delay para cantidadPrestada
-      setTimeout(async () => {
-        await fetchMyMaterials();
-      }, 1000);
       
       addToast({
         title: "Movimiento aprobado",
@@ -225,6 +262,49 @@ const MovimientoPage: React.FC = () => {
       addToast({
         title: "Error",
         description: "No se pudo aprobar el movimiento",
+        color: "danger",
+      });
+    }
+  };
+
+  const handleAprobarDevolucion = async (movimientoId: number) => {
+    try {
+      const aprobadorId = 1;
+      
+      // Obtener el movimiento para extraer el materialId
+      const movimiento = movimientos.find(m => m.id === movimientoId) || 
+                        movimientosPendientes.find(m => m.id === movimientoId);
+      
+      if (!movimiento) {
+        throw new Error('Movimiento no encontrado');
+      }
+
+      // ✅ USAR la nueva ruta que combina aprobación y cambio de estado
+      await movimientoService.aprobarYCambiarEstadoMaterial(
+        movimientoId,
+        movimiento.material.id,
+        false, // Desactivar el material prestado
+        aprobadorId,
+        'Devolución aprobada - Material desactivado automáticamente'
+      );
+      
+      // Actualizar las listas
+      await fetchMovimientos();
+      await fetchMyMaterials();
+      
+      if (mostrarSoloPendientes) {
+        await fetchMovimientosPendientes();
+      }
+      
+      addToast({
+        title: "Devolución aprobada",
+        description: "El movimiento ha sido aprobado y el material desactivado exitosamente",
+        color: "success",
+      });
+    } catch (error) {
+      addToast({
+        title: "Error",
+        description: "No se pudo aprobar la devolución",
         color: "danger",
       });
     }
@@ -357,24 +437,22 @@ const MovimientoPage: React.FC = () => {
     },
   ];
 
-  // Agregar un estado para el material seleccionado
+
   const [materialSeleccionado, setMaterialSeleccionado] = useState<number | null>(null);
 
-  // Agregar función para manejar cambio de material
+
   const handleMaterialChange = (materialId: number) => {
     setMaterialSeleccionado(materialId);
   };
 
-  // Obtener el material actual seleccionado
+
   const getMaterialActual = () => {
     if (!materialSeleccionado) return null;
     return materiales.find(m => m.id === materialSeleccionado);
   };
 
-  // useEffect principal para manejar cambios en tipo de movimiento
   useEffect(() => {
     fetchMovimientos();
-    // ✅ CAMBIO: Siempre cargar materiales del usuario, no solo para devoluciones
     fetchMyMaterials();
   }, [fetchMovimientos, fetchMyMaterials, tipoMovimientoSeleccionado]);
 
@@ -386,79 +464,79 @@ const MovimientoPage: React.FC = () => {
     }
   }, [materialSeleccionado, tipoMovimientoSeleccionado]);
 
-  const formFields: FieldDefinition<Movimiento>[] = [
-    {
-      name: "materialId",
-      label: "Material",
-      type: "select",
-      required: true,
-      options: getMaterialesFiltrados().map((material) => ({
-        value: material.id,
-        label: crearEtiquetaMaterial(material),
-      })),
-      onChange: (value: number) => handleMaterialChange(value)
-    },
-    // Mostrar sitio destino para peticiones y préstamos, información para devoluciones
-    ...(tipoMovimientoSeleccionado === "peticion" ||
-    tipoMovimientoSeleccionado === "prestamo"
+  const formFields: MovimientoFormField[] = [
+  {
+    name: "materialId",
+    label: "Material",
+    type: "select",
+    required: true,
+    options: getMaterialesFiltrados().map((material) => ({
+      value: material.id,
+      label: crearEtiquetaMaterial(material),
+    })),
+    onChange: (value: number) => handleMaterialChange(value)
+  },
+  // Mostrar sitio destino solo para peticiones y préstamos
+  ...(tipoMovimientoSeleccionado === "peticion" ||
+  tipoMovimientoSeleccionado === "prestamo"
+    ? [
+        {
+          name: "sitioDestinoId" as keyof Movimiento,
+          label: "Sitio Destino",
+          type: "select" as const,
+          required: true,
+          options: sitios.map((sitio) => ({
+            value: sitio.id,
+            label: sitio.nombre,
+          })),
+        },
+      ]
+    : tipoMovimientoSeleccionado === "devolver" && sitioDestinoAutomatico
       ? [
           {
-            name: "sitioDestinoId" as keyof Movimiento,
-            label: "Sitio Destino",
-            type: "select" as const,
-            required: true,
-            options: sitios.map((sitio) => ({
-              value: sitio.id,
-              label: sitio.nombre,
-            })),
-          },
-        ]
-      : tipoMovimientoSeleccionado === "devolver" && sitioDestinoAutomatico
-        ? [
-            {
-              name: "sitioDestinoInfo" as keyof Movimiento,
-              label: "Sitio de Destino (Automático)",
-              type: "text" as const,
-              required: false,
-              readOnly: true,
-            },
-          ]
-        : []),
-    {
-      name: "cantidad",
-      label: "Cantidad",
-      type: "number",
-      required: true,
-      min: 1,
-      // Para devoluciones, usar cantidadPrestada como máximo
-      ...(tipoMovimientoSeleccionado === "devolver" && getMaterialActual() ? {
-        max: getMaterialActual()?.cantidadPrestada || 1
-      } : {})
-    },
-    {
-      name: "observaciones" as keyof Movimiento,
-      label: "Observaciones",
-      type: "text" as const,
-      required: true,
-    },
-    ...(isAdmin
-      ? [
-          {
-            name: "solicitanteId" as keyof Movimiento,
-            label:
-              tipoMovimientoSeleccionado === "peticion"
-                ? "Solicitante"
-                : "Persona que devuelve",
-            type: "select" as const,
-            required: true,
-            options: personas.map((persona) => ({
-              value: persona.id,
-              label: `${persona.nombre} ${persona.apellido || ""}`,
-            })),
+            name: "sitioDestinoInfo",
+            label: "Sitio de Destino (Automático)",
+            type: "text" as const,
+            required: false,
+            readOnly: true,
           },
         ]
       : []),
-  ];
+  // Campo cantidad solo para peticiones y préstamos
+  ...(tipoMovimientoSeleccionado !== "devolver" ? [{
+    name: "cantidad",
+    label: "Cantidad",
+    type: "number" as const,
+    required: true,
+ 
+  }] : []),
+  // Campo observaciones solo para peticiones y préstamos
+  ...(tipoMovimientoSeleccionado !== "devolver" ? [{
+    name: "observaciones" as keyof Movimiento,
+    label: "Observaciones",
+    type: "text" as const,
+    required: true,
+  }] : []),
+  ...(isAdmin
+    ? [
+        {
+          name: "solicitanteId" as keyof Movimiento,
+          label:
+            tipoMovimientoSeleccionado === "peticion"
+              ? "Solicitante"
+              : tipoMovimientoSeleccionado === "prestamo"
+              ? "Persona que recibe"
+              : "Persona que devuelve",
+          type: "select" as const,
+          required: true,
+          options: personas.map((persona) => ({
+            value: persona.id,
+            label: `${persona.nombre} ${persona.apellido || ""}`,
+          })),
+        },
+      ]
+    : []),
+];
 
   const actions = [
     {
@@ -470,8 +548,14 @@ const MovimientoPage: React.FC = () => {
     },
     {
       label: "Aprobar",
-      onClick: (movimiento: Movimiento) =>
-        handleAprobarMovimiento(movimiento.id),
+      onClick: (movimiento: Movimiento) => {
+        // ✅ Usar método específico para devoluciones
+        if (movimiento.tipoMovimiento?.nombre === 'devolucion') {
+          return handleAprobarDevolucion(movimiento.id);
+        } else {
+          return handleAprobarMovimiento(movimiento.id);
+        }
+      },
       variant: "primary" as const,
       icon: <CheckCircle className="h-4 w-4" />,
       show: (movimiento: Movimiento) => movimiento.estado === "NO_APROBADO",
@@ -508,20 +592,32 @@ const MovimientoPage: React.FC = () => {
       const tipoMovimientoId = getTipoMovimientoId();
       const solicitanteId = isAdmin ? data.solicitanteId : user?.usuario?.id;
 
-      if (
-        !data.materialId ||
-        !solicitanteId ||
-        !data.cantidad ||
-        !data.observaciones
-      ) {
-        throw new Error("Faltan campos requeridos");
+      // Para devoluciones, los campos requeridos son diferentes
+      if (tipoMovimientoSeleccionado === "devolver") {
+        if (!data.materialId || !solicitanteId) {
+          throw new Error("Faltan campos requeridos para la devolución");
+        }
+      } else {
+        if (
+          !data.materialId ||
+          !solicitanteId ||
+          !data.cantidad ||
+          !data.observaciones
+        ) {
+          throw new Error("Faltan campos requeridos");
+        }
       }
 
       if (!tipoMovimientoId) {
         throw new Error("No se pudo determinar el tipo de movimiento");
       }
 
-      // Validación específica para devoluciones
+      let cantidad: number;
+      let observaciones: string;
+      let sitioDestinoId: number;
+      let sitioOrigenId: number | undefined;
+
+      // Para devoluciones, usar valores automáticos
       if (tipoMovimientoSeleccionado === "devolver") {
         const materialSeleccionado = materiales.find(
           (m) => m.id === Number(data.materialId)
@@ -531,19 +627,17 @@ const MovimientoPage: React.FC = () => {
           throw new Error("Material no encontrado");
         }
 
-        // Validar que no se pueda devolver más de lo que se tiene prestado
-        if (Number(data.cantidad) > (materialSeleccionado.cantidadPrestada || 0)) {
-          throw new Error(
-            `No puedes devolver ${data.cantidad} unidades. Solo tienes ${materialSeleccionado.cantidadPrestada || 0} unidades prestadas de este material.`
-          );
+        // Cantidad automática: toda la cantidad prestada
+        cantidad = materialSeleccionado.cantidadPrestada || 0;
+        
+        if (cantidad <= 0) {
+          throw new Error("No hay cantidad pendiente para devolver");
         }
-      }
 
-      let sitioDestinoId: number;
-      let sitioOrigenId: number | undefined;
+        // Observaciones automáticas
+        observaciones = `Devolución completa de material prestado - ${cantidad} unidades`;
 
-      // Para devoluciones, determinar automáticamente el sitio destino
-      if (tipoMovimientoSeleccionado === "devolver") {
+        // Sitio destino automático
         const sitioOrigen = getSitioOrigenMaterial(Number(data.materialId));
         if (!sitioOrigen) {
           throw new Error(
@@ -551,39 +645,26 @@ const MovimientoPage: React.FC = () => {
           );
         }
         sitioDestinoId = sitioOrigen;
-
-        // Para devoluciones, el sitio origen es donde está actualmente el material
-        const materialActual = materiales.find(
-          (m) => m.id === Number(data.materialId)
-        );
-        sitioOrigenId = materialActual?.sitioId;
+        sitioOrigenId = materialSeleccionado?.sitioId;
       } else {
-        // Para peticiones y préstamos, validar que se haya seleccionado sitio destino
-        if (
-          (tipoMovimientoSeleccionado === "peticion" ||
-            tipoMovimientoSeleccionado === "prestamo") &&
-          !data.sitioDestinoId
-        ) {
-          throw new Error(
-            "Se requiere seleccionar un sitio destino para las peticiones y préstamos."
-          );
-        }
-
+        // Para peticiones y préstamos, usar valores del formulario
+        cantidad = Number(data.cantidad);
+        observaciones = data.observaciones!;
+        
         if (!data.sitioDestinoId) {
           throw new Error("Se requiere seleccionar un sitio destino.");
         }
-
         sitioDestinoId = Number(data.sitioDestinoId);
       }
 
       const movementData: CreateMovimientoDto = {
         materialId: Number(data.materialId),
         tipoMovimientoId,
-        cantidad: Number(data.cantidad),
+        cantidad,
         sitioDestinoId,
         solicitanteId: Number(solicitanteId),
         aprobadorId: 1,
-        descripcion: data.observaciones,
+        descripcion: observaciones,
         ...(sitioOrigenId && { sitioOrigenId }),
       };
 
@@ -928,9 +1009,14 @@ const MovimientoPage: React.FC = () => {
                             size="sm"
                             color="success"
                             variant="flat"
-                            onPress={() =>
-                              handleAprobarMovimiento(movimiento.id)
-                            }
+                            onPress={() => {
+                              // ✅ Usar método específico para devoluciones
+                              if (movimiento.tipoMovimiento?.nombre === 'devolucion') {
+                                handleAprobarDevolucion(movimiento.id);
+                              } else {
+                                handleAprobarMovimiento(movimiento.id);
+                              }
+                            }}
                             startContent={<Check className="h-3 w-3" />}
                           >
                             Aprobar
@@ -1055,11 +1141,15 @@ const MovimientoPage: React.FC = () => {
 
       {isFormOpen && (
         <GenericForm<Movimiento>
-          fields={formFields}
+          fields={formFields as FieldDefinition<Movimiento>[]} 
           initialValues={{
             cantidad: 0,
             // Si no es administrador, pre-seleccionar el usuario actual
             ...(isAdmin ? {} : { solicitanteId: user?.usuario?.id }),
+            // Valores iniciales para devoluciones
+            ...(tipoMovimientoSeleccionado === "devolver" && sitioDestinoAutomatico ? {
+              sitioDestinoInfo: sitios.find(s => s.id === sitioDestinoAutomatico)?.nombre || "Sitio de origen"
+            } : {})
           }}
           onSubmit={handleSubmit}
           onCancel={handleCancel}

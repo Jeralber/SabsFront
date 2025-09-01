@@ -149,5 +149,58 @@ export const useMaterial = () => {
     fetchMyMaterials,
     fetchMyStock,
     fetchMaterialesPrestadosPendientes,  // ✅ Nombre corregido
+    
+    // ✅ NUEVOS: Métodos de sincronización mejorada
+    refreshAfterDevolucion: useCallback(async () => {
+      crud.setLoading(true);
+      try {
+        const response = await materialService.refreshAfterCriticalOperation('devolucion');
+        const materiales = Array.isArray(response.data) ? response.data : [];
+        crud.setState((prev) => ({ ...prev, items: materiales, loading: false }));
+        
+        // También actualizar stock si es necesario
+        await fetchMyStock();
+      } catch (error) {
+        console.warn('Error en refreshAfterDevolucion:', error);
+        // Fallback a fetchMateriales normal
+        await crud.fetchAll();
+      }
+    }, [crud, fetchMyStock]),
+    
+    refreshAfterPrestamo: useCallback(async () => {
+      crud.setLoading(true);
+      try {
+        const response = await materialService.refreshAfterCriticalOperation('prestamo');
+        const materiales = Array.isArray(response.data) ? response.data : [];
+        crud.setState((prev) => ({ ...prev, items: materiales, loading: false }));
+        
+        // También actualizar stock
+        await fetchMyStock();
+      } catch (error) {
+        console.warn('Error en refreshAfterPrestamo:', error);
+        // Fallback a fetchMateriales normal
+        await crud.fetchAll();
+      }
+    }, [crud, fetchMyStock]),
+    
+    // ✅ NUEVO: Método de sincronización inteligente
+    smartSync: useCallback(async (operationType: 'devolucion' | 'prestamo' | 'general' = 'general') => {
+      try {
+        const response = await materialService.refreshAfterCriticalOperation(operationType);
+        const materiales = Array.isArray(response.data) ? response.data : [];
+        crud.setState((prev) => ({ ...prev, items: materiales }));
+        
+        // Actualizar stock en paralelo para operaciones críticas
+        if (operationType === 'devolucion' || operationType === 'prestamo') {
+          fetchMyStock().catch(err => console.warn('Error actualizando stock:', err));
+        }
+        
+        return response;
+      } catch (error) {
+        console.warn(`Error en smartSync (${operationType}):`, error);
+        // Fallback silencioso
+        return crud.fetchAll();
+      }
+    }, [crud, fetchMyStock])
   };
 };

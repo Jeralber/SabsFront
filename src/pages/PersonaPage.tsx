@@ -17,6 +17,7 @@ export default function PersonaPage() {
     createPersona,
     updatePersona,
     deletePersona,
+    fetchPersonas, // Agregar esta función del hook
   } = usePersona();
   
   const { roles } = useRol();
@@ -263,8 +264,14 @@ export default function PersonaPage() {
     try {
       const processedData = {
         ...values,
+        // Asegurar que edad sea número
+        edad: typeof values.edad === 'string' ? parseInt(values.edad) : values.edad,
+        // Limpiar campos opcionales vacíos
+        fichaId: values.fichaId || undefined,
+        rolId: values.rolId || undefined,
+        telefono: values.telefono || undefined,
       };
-
+  
       if (isEditing && editingPersona) {
         await updatePersona(editingPersona.id, processedData);
         addToast({
@@ -276,23 +283,20 @@ export default function PersonaPage() {
         await createPersona({
           ...processedData,
           activo: values.activo ?? true,
-    
         });
         addToast({
           title: "Persona creada",
           description: `${values.nombre} ${values.apellido} ha sido creado exitosamente.`,
           color: "success",
         });
+        
+        // Refrescar la lista de personas después de crear
+        await fetchPersonas();
       }
+      
       setShowForm(false);
       setEditingPersona(null);
       setIsEditing(false);
-      
-      // Espacio para refrescar después de crear/actualizar
-      setTimeout(() => {
-        // El hook usePersona debería refrescar automáticamente los datos
-        // pero podemos forzar un refresh si es necesario
-      }, 100);
       
     } catch (error) {
       addToast({
