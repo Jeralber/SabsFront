@@ -31,6 +31,8 @@ const stockServiceAdapter = {
       cantidad: stock.cantidad!,
       requiereCodigo: stock.requiereCodigo || false,
       codigo: stock.codigo,
+      // NUEVO: transportar sitioId
+      sitioId: stock.sitioId as number | undefined,
     };
     const response = await stockService.create(createDto);
     if (!response.data || Array.isArray(response.data)) {
@@ -48,6 +50,8 @@ const stockServiceAdapter = {
       codigo: stock.codigo,
       activo: stock.activo,
       requiereCodigo: stock.requiereCodigo,
+      // NUEVO: permitir actualizar sitioId
+      sitioId: stock.sitioId as number | undefined,
     };
     const response = await stockService.update(id, updateDto);
     if (!response.data || Array.isArray(response.data)) {

@@ -3,7 +3,6 @@ import { Material } from "../types/material.types";
 import { materialService } from "../services/materialService";
 import { useGenericCRUD } from "./useGenericCRUD";
 
-// Adaptador para hacer compatible materialService con useGenericCRUD
 const materialServiceAdapter = {
   getAll: async (): Promise<{ data: Material[] }> => {
     const response = await materialService.getAll();
@@ -47,6 +46,7 @@ const materialServiceAdapter = {
 export const useMaterial = () => {
   const crud = useGenericCRUD(materialServiceAdapter, "material");
   const [stockMateriales, setStockMateriales] = useState<Material[]>([]);
+  
   const fetchStock = useCallback(async () => {
     crud.setLoading(true);
     try {
@@ -59,8 +59,8 @@ export const useMaterial = () => {
     } finally {
       crud.setLoading(false);
     }
-    
   }, [crud]);
+  
   const fetchMaterialesPrestadosPendientes = useCallback(async () => {
     crud.setLoading(true);
     try {
@@ -112,6 +112,7 @@ export const useMaterial = () => {
       );
     }
   }, []);
+  
   const fetchMyStock = useCallback(async () => {
     crud.setLoading(true);
     try {
@@ -125,6 +126,41 @@ export const useMaterial = () => {
       );
     }
   }, []);
+
+  // ✅ NUEVOS MÉTODOS basados en el backend
+  const fetchMovimientos = useCallback(async (materialId: number) => {
+    crud.setLoading(true);
+    try {
+      const response = await materialService.getMovimientos(materialId);
+      return response.data;
+    } catch (error) {
+      crud.setError(
+        error instanceof Error
+          ? error.message
+          : "Error al cargar movimientos del material"
+      );
+      throw error;
+    } finally {
+      crud.setLoading(false);
+    }
+  }, [crud]);
+
+  const fetchSaldoPendiente = useCallback(async (materialId: number) => {
+    crud.setLoading(true);
+    try {
+      const response = await materialService.getSaldo(materialId);
+      return response.data;
+    } catch (error) {
+      crud.setError(
+        error instanceof Error
+          ? error.message
+          : "Error al cargar saldo pendiente"
+      );
+      throw error;
+    } finally {
+      crud.setLoading(false);
+    }
+  }, [crud]);
 
   useEffect(() => {
     fetchMyMaterials();
@@ -148,21 +184,21 @@ export const useMaterial = () => {
     fetchBySitio,
     fetchMyMaterials,
     fetchMyStock,
-    fetchMaterialesPrestadosPendientes,  // ✅ Nombre corregido
+    fetchMaterialesPrestadosPendientes,
     
-    // ✅ NUEVOS: Métodos de sincronización mejorada
+    // ✅ NUEVOS MÉTODOS
+    fetchMovimientos,
+    fetchSaldoPendiente,
+    
     refreshAfterDevolucion: useCallback(async () => {
       crud.setLoading(true);
       try {
         const response = await materialService.refreshAfterCriticalOperation('devolucion');
         const materiales = Array.isArray(response.data) ? response.data : [];
         crud.setState((prev) => ({ ...prev, items: materiales, loading: false }));
-        
-        // También actualizar stock si es necesario
         await fetchMyStock();
       } catch (error) {
         console.warn('Error en refreshAfterDevolucion:', error);
-        // Fallback a fetchMateriales normal
         await crud.fetchAll();
       }
     }, [crud, fetchMyStock]),
@@ -173,24 +209,19 @@ export const useMaterial = () => {
         const response = await materialService.refreshAfterCriticalOperation('prestamo');
         const materiales = Array.isArray(response.data) ? response.data : [];
         crud.setState((prev) => ({ ...prev, items: materiales, loading: false }));
-        
-        // También actualizar stock
         await fetchMyStock();
       } catch (error) {
         console.warn('Error en refreshAfterPrestamo:', error);
-        // Fallback a fetchMateriales normal
         await crud.fetchAll();
       }
     }, [crud, fetchMyStock]),
     
-    // ✅ NUEVO: Método de sincronización inteligente
     smartSync: useCallback(async (operationType: 'devolucion' | 'prestamo' | 'general' = 'general') => {
       try {
         const response = await materialService.refreshAfterCriticalOperation(operationType);
         const materiales = Array.isArray(response.data) ? response.data : [];
         crud.setState((prev) => ({ ...prev, items: materiales }));
         
-        // Actualizar stock en paralelo para operaciones críticas
         if (operationType === 'devolucion' || operationType === 'prestamo') {
           fetchMyStock().catch(err => console.warn('Error actualizando stock:', err));
         }
@@ -198,7 +229,6 @@ export const useMaterial = () => {
         return response;
       } catch (error) {
         console.warn(`Error en smartSync (${operationType}):`, error);
-        // Fallback silencioso
         return crud.fetchAll();
       }
     }, [crud, fetchMyStock])

@@ -68,14 +68,21 @@ export function DataTable<T extends { [key: string]: any }>({
   const [currentPage, setCurrentPage] = useState(1);
 
   const normalizedData = useMemo(() => {
-    if (Array.isArray(data)) {
-      return data;
-    } else if (data && typeof data === 'object' && Array.isArray(data.data)) {
-      return data.data;
-    } else {
-      console.error('Error: data no es un array ni contiene una propiedad data que sea array', data);
-      return [];
+    const baseArray: unknown[] =
+      Array.isArray(data)
+        ? data
+        : (data && typeof data === 'object' && Array.isArray((data as any).data))
+          ? (data as any).data
+          : [];
+
+    // Filtramos null/undefined para evitar filas "vacías"
+    const cleaned = baseArray.filter((item) => item !== null && item !== undefined) as T[];
+
+    if (baseArray.length > 0 && cleaned.length < baseArray.length) {
+      console.warn('DataTable: filtrados elementos nulos/indefinidos en data');
     }
+
+    return cleaned;
   }, [data]);
 
   // Función para manejar el ordenamiento
@@ -187,7 +194,6 @@ export function DataTable<T extends { [key: string]: any }>({
   const visibleColumnsList = columns.filter(col => 
     visibleColumns.has(col.accessorKey)
   );
-
 
   const getActionButtons = (row: T) => {
     const buttons = [];
@@ -348,13 +354,15 @@ export function DataTable<T extends { [key: string]: any }>({
                 <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   {visibleColumnsList.map((col, i) => (
                     <td key={i} className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {col.cell ? col.cell(row) : String(row[col.accessorKey] || '')}
+                      {col.cell
+                        ? col.cell(row as T)
+                        : String(((row as any)?.[col.accessorKey as any]) ?? '')}
                     </td>
                   ))}
                   {(actions || onEdit || onDelete) && (
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                       <div className="flex space-x-2">
-                        {getActionButtons(row)}
+                        {getActionButtons(row as T)}
                       </div>
                     </td>
                   )}

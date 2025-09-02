@@ -1,6 +1,6 @@
 
 import { GenericForm, FieldDefinition } from '../molecules/GenericForm';
-import { Stock, CreateStockDto, UpdateStockDto, StockFormProps } from '../../types/stock.types';
+import { , CreateStockDto, UpdateStockDto,  } from '../../types/stock.types';
 
 export function StockForm({ 
   stock, 

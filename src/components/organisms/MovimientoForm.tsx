@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { GenericForm, FieldDefinition } from "../molecules/GenericForm";
-import { Movimiento, CreateMovimientoDto } from "../../types/movimiento.types";
+import { Movimiento } from "../../types/movimiento.types";
 
 
 type TipoMovimientoSeleccionado = "peticion" | "devolver" | "prestamo" | null;

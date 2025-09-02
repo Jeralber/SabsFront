@@ -77,7 +77,9 @@ export function StockManagementModal({
         materialId: material.id,
         cantidad: formData.cantidad,
         requiereCodigo: !formData.noPoseeCodigo,
-        codigo: formData.noPoseeCodigo ? undefined : formData.codigo
+        codigo: formData.noPoseeCodigo ? undefined : formData.codigo,
+        // NUEVO: asociar al sitio del material
+        sitioId: material.sitioId
       };
 
       const newStock = await createStock(stockData);

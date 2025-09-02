@@ -425,7 +425,8 @@ const handleStockUpdated = async () => {
           color: "success",
         });
       } else {
-        await createMaterial(data);
+        const { activo, ...payload } = data;
+        await createMaterial(payload);
         addToast({
           title: "Material creado",
           description: `El material "${data.nombre}" ha sido creado exitosamente.`,

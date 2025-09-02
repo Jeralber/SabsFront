@@ -1,34 +1,31 @@
 import { Material } from './material.types';
 import { Persona } from './persona.types';
 import { Movimiento } from './movimiento.types';
-import { TipoMovimiento } from './tipo-movimiento.types';
 
 export interface Detalles {
   id: number;
   movimientoId: number;
   materialId: number;
-  tipoMovimientoId: number;
   cantidad: number;
-  estado: 'INFORMATIVO' | 'PROCESADO';
-  solicitanteId: number;
-  aprobadorId?: number;
+  estado: string; // Cambiado de enum a string para coincidir con backend
+  personaSolicitaId: number | null; // Cambiado de solicitanteId
+  personaApruebaId?: number; // Cambiado de aprobadorId
   fechaCreacion: Date;
-  fechaActualizacion: Date;
+  fechaActualizacion?: Date; // Ahora opcional para coincidir con backend
   
   // Relaciones
   movimiento: Movimiento;
   material: Material;
-  tipoMovimiento: TipoMovimiento;
-  solicitante: Persona;
-  aprobador?: Persona;
+  personaSolicita?: Persona; // Cambiado de solicitante
+  personaAprueba?: Persona; // Cambiado de aprobador
 }
 
-// Filtros para consultas
+// Filtros para consultas - actualizados
 export interface DetallesFiltros {
-  estado?: 'INFORMATIVO' | 'PROCESADO';
+  estado?: string; // Cambiado para ser más flexible
   materialId?: number;
-  solicitanteId?: number;
-  aprobadorId?: number;
+  personaSolicitaId?: number; // Cambiado de solicitanteId
+  personaApruebaId?: number; // Cambiado de aprobadorId
   fechaDesde?: string;
   fechaHasta?: string;
 }

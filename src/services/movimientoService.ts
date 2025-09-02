@@ -1,100 +1,73 @@
-import axios from "@/lib/axios";
-import { Movimiento, CreateMovimientoDto, AprobarMovimientoDto, MovimientoResponse, MovimientoListResponse } from '../types/movimiento.types';
+// services/movimiento.service.ts
+import axios from '@/lib/axios';
+import { Movimiento } from '../types/movimiento.types';
 
 const API_URL = '/movimientos';
 
-export interface MovimientosFiltros {
-  estado?: 'NO_APROBADO' | 'APROBADO' | 'RECHAZADO';
-  materialId?: number;
-  solicitanteId?: number;
-  aprobadorId?: number;
-  tipoMovimientoId?: number;
-  fechaDesde?: string;
-  fechaHasta?: string;
-}
-
-export const movimientoService = {
-  // Crear nuevo movimiento
-  crear: async (data: CreateMovimientoDto): Promise<Movimiento> => {
-    try {
-      const response = await axios.post<MovimientoResponse>(API_URL, data);
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error detallado:', error.response?.data);
-      throw error;
-    }
+export const MovimientoService = {
+  // ✅ CRUD Básico
+  async getAll(): Promise<Movimiento[]> {
+    const res = await axios.get<Movimiento[]>(API_URL);
+    return res.data;
   },
 
-  // Obtener todos los movimientos con filtros opcionales
-  obtenerTodos: async (filtros?: MovimientosFiltros): Promise<Movimiento[]> => {
-    let url = API_URL;
-    if (filtros) {
-      const params = new URLSearchParams();
-      Object.entries(filtros).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, value.toString());
-        }
-      });
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-    }
-    const response = await axios.get<MovimientoListResponse>(url);
-    return response.data.data;
+  async getById(id: number): Promise<Movimiento> {
+    const res = await axios.get<Movimiento>(`${API_URL}/${id}`);
+    return res.data;
   },
 
-  // Obtener movimientos pendientes de aprobación
-  obtenerPendientes: async (): Promise<Movimiento[]> => {
-    const response = await axios.get<MovimientoListResponse>(`${API_URL}/pendientes`);
-    return response.data.data;
+  // ✅ Crear movimiento
+  async create(dto: {
+    personaSolicitaId: number;
+    sitioOrigenId: number;
+    sitioDestinoId?: number | null;
+    tipoMovimientoId?: number | null; // <-- NUEVO
+    detalles: { materialId: number; cantidad: number }[];
+  }): Promise<Movimiento> {
+    const res = await axios.post<Movimiento>(API_URL, dto);
+    return res.data;
   },
 
-  // Obtener movimiento por ID
-  obtenerPorId: async (id: number): Promise<Movimiento> => {
-    const response = await axios.get<MovimientoResponse>(`${API_URL}/${id}`);
-    return response.data.data;
-  },
-
-  // Aprobar o rechazar movimiento
-  aprobarRechazar: async (id: number, data: AprobarMovimientoDto): Promise<Movimiento> => {
-    const response = await axios.patch<MovimientoResponse>(`${API_URL}/${id}/aprobar`, data);
-    return response.data.data;
-  },
-
-  // Métodos de conveniencia para aprobar/rechazar
-  aprobar: async (id: number, aprobadorId: number, observaciones?: string): Promise<Movimiento> => {
-    return movimientoService.aprobarRechazar(id, {
-      estado: 'APROBADO',
-      aprobadorId,
-      observaciones
+  // ✅ Aprobar movimiento
+  async aprobar(id: number, aprobadoPorId: number): Promise<Movimiento> {
+    const res = await axios.patch<Movimiento>(`${API_URL}/${id}/aprobar`, {
+      aprobadoPorId
     });
-  },
-   aprobarYCambiarEstadoMaterial: async (
-    movimientoId: number,
-    materialId: number,
-    estado: boolean,
-    aprobadorId: number,
-    observaciones?: string
-  ): Promise<any> => {
-    const response = await axios.patch(
-      `/movimientos/${movimientoId}/aprobar/material/${materialId}/estado/${estado}`,
-      {
-        aprobadorId,
-        observaciones,
-        estado: 'APROBADO'
-      }
-    );
-    return response.data;
+    return res.data;
   },
 
-
-  rechazar: async (id: number, aprobadorId: number, observaciones?: string): Promise<Movimiento> => {
-    return movimientoService.aprobarRechazar(id, {
-      estado: 'RECHAZADO',
-      aprobadorId,
-      observaciones
+  // ✅ Rechazar movimiento
+  async rechazar(id: number, rechazadoPorId: number): Promise<Movimiento> {
+    const res = await axios.patch<Movimiento>(`${API_URL}/${id}/rechazar`, {
+      rechazadoPorId
     });
-  }
-}
-  // ✅ NUEVO: Aprobar movimiento y cambiar estado del material
- 
+    return res.data;
+  },
+
+  // ✅ Devolver material
+  async devolverMaterial(movimientoOrigenId: number, dto: {
+    personaSolicitaId: number;
+    detalles: { materialId: number; cantidad: number }[];
+  }): Promise<Movimiento> {
+    const res = await axios.patch<Movimiento>(`${API_URL}/${movimientoOrigenId}/devolver`, dto);
+    return res.data;
+  },
+
+
+  async getSaldoPendiente(materialId: number): Promise<{ saldoPendiente: number }> {
+    const res = await axios.get<{ saldoPendiente: number }>(`${API_URL}/saldo/${materialId}`);
+    return res.data;
+  },
+
+  // ✅ Obtener préstamos activos por material
+  async getPrestamosActivos(materialId: number): Promise<any[]> {
+    const res = await axios.get<any[]>(`${API_URL}/prestamos-activos/${materialId}`);
+    return res.data;
+  },
+
+  // ✅ REMOVIDO: Endpoints que no existen en el backend
+  // - getPorMaterial (no existe en el controlador)
+  // - getPendientes (se puede hacer con filtros en getAll)
+};
+
+export const movimientoService = MovimientoService;

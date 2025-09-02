@@ -1,243 +1,160 @@
-import { useState, useCallback } from 'react';
-import { Movimiento, CreateMovimientoDto } from '../types/movimiento.types';
-import { movimientoService, MovimientosFiltros } from '../services/movimientoService';
-import { useMaterial } from './useMaterial';
-import { Material } from '../types/material.types';
-
-interface UseMovimientoState {
-  movimientos: Movimiento[];
-  movimientosPendientes: Movimiento[];
-  selectedMovimiento: Movimiento | null;
-  loading: boolean;
-  error: string | null;
-}
+// hooks/useMovimientos.ts
+import { useState } from 'react';
+import { Movimiento } from '../types/movimiento.types';
+import { MovimientoService } from '../services/movimientoService';
 
 export const useMovimiento = () => {
-  const { 
-    fetchMateriales, 
-    materiales, 
-    refreshAfterDevolucion
-  } = useMaterial();
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [state, setState] = useState<UseMovimientoState>({
-    movimientos: [],
-    movimientosPendientes: [],
-    selectedMovimiento: null,
-    loading: false,
-    error: null
-  });
-
-  // Mover la función validarDevolucion dentro del hook
-  const validarDevolucion = useCallback((materialId: number, cantidad: number) => {
-    const material = materiales.find((m: Material) => m.id === materialId);
-    
-    if (!material) {
-      throw new Error('Material no encontrado');
-    }
-    
-    if (material.esOriginal) {
-      throw new Error('No se puede devolver un material original');
-    }
-    
-    if (!material.cantidadPrestada || material.cantidadPrestada <= 0) {
-      throw new Error('Este material no tiene cantidad pendiente de devolución');
-    }
-    
-    if (cantidad > material.cantidadPrestada) {
-      throw new Error(`Cantidad excede lo prestado. Máximo: ${material.cantidadPrestada}`);
-    }
-  }, [materiales]);
-
-  const fetchMovimientos = useCallback(async (filtros?: MovimientosFiltros) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  // ✅ Fetch movimientos
+  const fetchMovimientos = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.obtenerTodos(filtros);
-      setState(prev => ({
-        ...prev,
-        movimientos: Array.isArray(response) ? response : [],
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Error al cargar movimientos'
-      }));
+      const res = await MovimientoService.getAll();
+      setMovimientos(res || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Error al cargar movimientos');
+      console.error('Error fetching movimientos:', err);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  const fetchMovimientosPendientes = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  // ✅ CORREGIDO: Crear movimiento - sitioOrigenId es requerido
+  const createMovimiento = async (dto: {
+    personaSolicitaId: number;
+    sitioOrigenId: number; // ✅ REQUERIDO
+    sitioDestinoId?: number | null;
+    detalles: { materialId: number; cantidad: number }[];
+  }) => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.obtenerPendientes();
-      setState(prev => ({
-        ...prev,
-        movimientosPendientes: Array.isArray(response) ? response : [],
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Error al cargar movimientos pendientes'
-      }));
+      const res = await MovimientoService.create(dto);
+      setMovimientos(prev => [res, ...prev]);
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al crear movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  const fetchMovimientoById = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  // ✅ Aprobar movimiento
+  const aprobarMovimiento = async (id: number, aprobadoPorId: number) => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.obtenerPorId(id);
-      setState(prev => ({
-        ...prev,
-        selectedMovimiento: response,
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : `Error al cargar movimiento con ID ${id}`
-      }));
+      const res = await MovimientoService.aprobar(id, aprobadoPorId);
+      setMovimientos(prev => prev.map(m => (m.id === id ? res : m)));
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al aprobar movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  const createMovimiento = useCallback(async (movimiento: CreateMovimientoDto) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  // ✅ Rechazar movimiento
+  const rechazarMovimiento = async (id: number, rechazadoPorId: number) => {
+    setLoading(true);
+    setError(null);
     try {
-      const nuevoMovimiento = await movimientoService.crear(movimiento);
-      
-      // Refrescar la lista completa en lugar de agregar manualmente
-      await fetchMovimientos();
-      await fetchMateriales();
-      
-      setState(prev => ({ ...prev, loading: false }));
-      return nuevoMovimiento;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al crear movimiento';
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
+      const res = await MovimientoService.rechazar(id, rechazadoPorId);
+      setMovimientos(prev => prev.map(m => (m.id === id ? res : m)));
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al rechazar movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-  }, [fetchMateriales, fetchMovimientos]);
+  };
 
-  // ✅ NUEVO MÉTODO: Aprobar movimiento y cambiar estado del material
-  const aprobarMovimientoYCambiarEstado = useCallback(async (
-    movimientoId: number, 
-    materialId: number, 
-    nuevoEstado: boolean, 
-    aprobadorId: number, 
-    observaciones?: string
-  ) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  // ✅ Devolver material
+  const devolverMaterial = async (movimientoOrigenId: number, dto: {
+    personaSolicitaId: number;
+    detalles: { materialId: number; cantidad: number }[];
+  }) => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.aprobarYCambiarEstadoMaterial(
-        movimientoId,
-        materialId,
-        nuevoEstado,
-        aprobadorId,
-        observaciones
-      );
-      
-      // Actualizar materiales usando el método especializado para devoluciones
-      if (!nuevoEstado) { // Si se está desactivando (devolución)
-        await refreshAfterDevolucion();
-      } else {
-        await fetchMateriales();
-      }
-      
-      // Actualizar listas de movimientos
-      await fetchMovimientos();
-      await fetchMovimientosPendientes();
-      
-      setState(prev => ({
-        ...prev,
-        selectedMovimiento: prev.selectedMovimiento?.id === movimientoId ? response.movimiento : prev.selectedMovimiento,
-        loading: false
-      }));
-      
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al aprobar movimiento y cambiar estado del material`;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
+      const res = await MovimientoService.devolverMaterial(movimientoOrigenId, dto);
+      setMovimientos(prev => [res, ...prev]);
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al devolver material';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-  }, [fetchMateriales, fetchMovimientos, fetchMovimientosPendientes, refreshAfterDevolucion]);
+  };
 
-  const aprobarMovimiento = useCallback(async (id: number, aprobadorId: number, observaciones?: string) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  // ✅ Obtener movimiento por ID
+  const fetchMovimientoById = async (id: number) => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.aprobar(id, aprobadorId, observaciones);
-      
-      // Actualización normal para movimientos que no son devoluciones
-      await fetchMateriales();
-      
-      // Segunda actualización con delay
-      setTimeout(async () => {
-        await fetchMateriales();
-      }, 500);
-      
-      // Actualizar listas de movimientos
-      await fetchMovimientos();
-      await fetchMovimientosPendientes();
-      
-      setState(prev => ({
-        ...prev,
-        selectedMovimiento: prev.selectedMovimiento?.id === id ? response : prev.selectedMovimiento,
-        loading: false
-      }));
-      
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al aprobar movimiento con ID ${id}`;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
+      const res = await MovimientoService.getById(id);
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al cargar movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-  }, [fetchMateriales, fetchMovimientos, fetchMovimientosPendientes]);
+  };
 
-  const rechazarMovimiento = useCallback(async (id: number, aprobadorId: number, observaciones?: string) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  // ✅ CORREGIDO: Obtener saldo pendiente
+  const fetchSaldoPendiente = async (materialId: number) => {
     try {
-      const response = await movimientoService.rechazar(id, aprobadorId, observaciones);
-      setState(prev => ({
-        ...prev,
-        movimientos: prev.movimientos.map(m => m.id === id ? response : m),
-        movimientosPendientes: prev.movimientosPendientes.filter(m => m.id !== id),
-        selectedMovimiento: prev.selectedMovimiento?.id === id ? response : prev.selectedMovimiento,
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al rechazar movimiento con ID ${id}`;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
+      const res = await MovimientoService.getSaldoPendiente(materialId);
+      return res.saldoPendiente;
+    } catch (err: any) {
+      console.error('Error fetching saldo pendiente:', err);
+      return 0;
     }
-  }, []);
+  };
+
+  // ✅ Obtener préstamos activos por material
+  const getPrestamosActivos = async (materialId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const prestamos = await MovimientoService.getPrestamosActivos(materialId);
+      return prestamos;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al obtener préstamos activos';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return {
-    ...state,
+    movimientos,
+    loading,
+    error,
     fetchMovimientos,
-    fetchMovimientosPendientes,
-    fetchMovimientoById,
     createMovimiento,
     aprobarMovimiento,
-    aprobarMovimientoYCambiarEstado, // ✅ NUEVO método exportado
     rechazarMovimiento,
-    validarDevolucion 
+    devolverMaterial,
+    fetchMovimientoById,
+    fetchSaldoPendiente,
+    getPrestamosActivos,
   };
 };
+
+export const useMovimientos = useMovimiento; // Alias para compatibilidad
