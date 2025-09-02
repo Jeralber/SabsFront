@@ -7,6 +7,7 @@ import { useCentro } from '../hooks/useCentro';
 import { AreaCentro } from '../types/area-centro.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Building, MapPin } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 
 type Column<T> = {
@@ -136,23 +137,45 @@ const AreaCentroPage: React.FC = () => {
     const areaCentro = areasCentro.find(ac => ac.id === id);
     if (!areaCentro) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar la relación entre "${areaCentro.centro?.nombre || 'Centro'}" y "${areaCentro.area?.nombre || 'Área'}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar Relación Área-Centro?',
+      text: `¿Está seguro de que desea eliminar la relación entre "${areaCentro.centro?.nombre || 'Centro'}" y "${areaCentro.area?.nombre || 'Área'}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteAreaCentro(id);
         addToast({
           title: 'Relación eliminada',
-          description: `La relación área-centro ha sido eliminada exitosamente.`,
+          description: 'La relación área-centro ha sido eliminada exitosamente.',
           color: 'success'
+        });
+
+        await Swal.fire({
+          title: '¡Eliminada!',
+          text: 'La relación ha sido eliminada correctamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
         });
       } catch (error) {
         addToast({
           title: 'Error al eliminar',
           description: error instanceof Error ? error.message : 'Error desconocido al eliminar la relación área-centro',
           color: 'danger'
+        });
+
+        await Swal.fire({
+          title: 'Error',
+          text: 'No se pudo eliminar la relación. Inténtelo nuevamente.',
+          icon: 'error'
         });
       }
     }

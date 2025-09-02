@@ -7,6 +7,7 @@ import { addToast } from '@heroui/react';
 import { Edit, Trash2, Building, MapPin, Hash, Calendar, Clock, CheckCircle, XCircle, Settings, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { useCentro } from '../hooks/useCentro';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -27,6 +28,7 @@ const SedePage: React.FC = () => {
     deleteSede,
     fetchSedes
   } = useSede();
+  const { centros } = useCentro();
 
 
 
@@ -68,7 +70,17 @@ const SedePage: React.FC = () => {
         </div>
       )
     },
-
+    {
+      accessorKey: 'centro',
+      header: 'Centro',
+      sortable: false,
+      cell: (row: Sede) => (
+        <div className="flex items-center gap-2">
+          <Building className="h-4 w-4 text-purple-500" />
+          <span className="font-medium">{row.centro?.nombre || 'Sin centro'}</span>
+        </div>
+      )
+    },
     {
       accessorKey: 'activo',
       header: 'Estado',
@@ -132,6 +144,16 @@ const SedePage: React.FC = () => {
       required: true
     },
     {
+      name: 'centroId',
+      label: 'Centro',
+      type: 'select',
+      required: true,
+      options: centros.map(c => ({
+        value: c.id,
+        label: c.nombre
+      }))
+    },
+    {
       name: 'activo',
       label: 'Estado Activo',
       type: 'checkbox',
@@ -192,15 +214,20 @@ const SedePage: React.FC = () => {
 
   const handleSubmit = async (data: Partial<Sede>) => {
     try {
+      const processedData: Partial<Sede> = {
+        ...data,
+        centroId: data.centroId ? Number(data.centroId) : undefined
+      };
+
       if (editingSede) {
-        await updateSede(editingSede.id, data);
+        await updateSede(editingSede.id, processedData);
         addToast({
           title: 'Sede actualizada',
           description: `La sede "${data.nombre}" ha sido actualizada exitosamente.`,
           color: 'success'
         });
       } else {
-        await createSede(data);
+        await createSede(processedData);
         addToast({
           title: 'Sede creada',
           description: `La sede "${data.nombre}" ha sido creada exitosamente.`,

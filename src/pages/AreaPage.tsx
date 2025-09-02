@@ -6,6 +6,7 @@ import { Area } from "../types/area.types";
 import { addToast } from "@heroui/react";
 import { Edit, Trash2, MapPin, Settings, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Swal from 'sweetalert2';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -161,17 +162,33 @@ const AreaPage: React.FC = () => {
     const area = areas.find((a) => a.id === id);
     if (!area) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el área "${area.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar Área?',
+      text: `¿Está seguro de que desea eliminar el área "${area.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteArea(id);
         addToast({
           title: "Área eliminada",
           description: `El área "${area.nombre}" ha sido eliminada exitosamente.`,
           color: "success",
+        });
+
+        await Swal.fire({
+          title: '¡Eliminada!',
+          text: 'El área ha sido eliminada correctamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
         });
       } catch (error) {
         addToast({
@@ -181,6 +198,12 @@ const AreaPage: React.FC = () => {
               ? error.message
               : "Error desconocido al eliminar el área",
           color: "danger",
+        });
+
+        await Swal.fire({
+          title: 'Error',
+          text: 'No se pudo eliminar el área. Inténtelo nuevamente.',
+          icon: 'error'
         });
       }
     }

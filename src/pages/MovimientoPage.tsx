@@ -107,6 +107,40 @@ function MovimientoPage() {
   const [prestamoSeleccionado, setPrestamoSeleccionado] = useState<any | null>(
     null
   );
+  const [materialesConPrestamoActivoIds, setMaterialesConPrestamoActivoIds] = useState<number[]>([]);
+
+  const actualizarMaterialesConPrestamoActivo = async () => {
+    if (tipoMovimientoSeleccionado !== "devolver") {
+      setMaterialesConPrestamoActivoIds([]);
+      return;
+    }
+    try {
+      const personaFiltroId = isAdmin ? solicitanteId : (user?.usuario?.id || null);
+      const candidatos = materiales.filter((m) => (m.esOriginal !== false) && !!m.activo);
+
+      const resultados = await Promise.allSettled(
+        candidatos.map(async (m) => {
+          const prestamos = await getPrestamosActivos(m.id);
+          const prestamosConSaldo = (prestamos || []).filter((p: any) => (p.saldoPendiente ?? 0) > 0);
+          const prestamosFiltrados = personaFiltroId
+            ? prestamosConSaldo.filter((p: any) => p.personaSolicitaId === personaFiltroId)
+            : prestamosConSaldo;
+
+          return prestamosFiltrados.length > 0 ? m.id : null;
+        })
+      );
+
+      const ids = resultados
+        .filter((r): r is PromiseFulfilledResult<number | null> => r.status === "fulfilled")
+        .map((r) => r.value)
+        .filter((id): id is number => id != null);
+
+      setMaterialesConPrestamoActivoIds(ids);
+    } catch (e) {
+      console.error("Error actualizando materiales con préstamo activo:", e);
+      setMaterialesConPrestamoActivoIds([]);
+    }
+  };
 
   // Funciones de utilidad
   const crearEtiquetaMaterial = (material: Material) => {
@@ -203,11 +237,12 @@ function MovimientoPage() {
         return esOriginal && activo && tieneStockActivoEnAlgunaParte;
       });
     } else if (tipoMovimientoSeleccionado === "devolver") {
-      // Mostrar materiales ORIGINALES activos para poder ver sus préstamos
+      // Solo materiales ORIGINALES activos que tengan préstamo activo (opcionalmente del solicitante)
       return materiales.filter((material) => {
         const esOriginal = material.esOriginal !== false;
         const activo = !!material.activo;
-        return esOriginal && activo;
+        const tienePrestamoActivo = materialesConPrestamoActivoIds.includes(material.id);
+        return esOriginal && activo && tienePrestamoActivo;
       });
     } else if (tipoMovimientoSeleccionado === "prestamo") {
       return materiales.filter((material) => {
@@ -522,7 +557,9 @@ function MovimientoPage() {
 
     // Cargar materiales específicos según el tipo
     if (tipo === "devolver") {
-      await fetchMaterialesPrestadosPendientes();
+      // Antes: await fetchMaterialesPrestadosPendientes();
+      await fetchMyMaterials();
+      await actualizarMaterialesConPrestamoActivo();
     } else {
       await fetchMyMaterials();
     }
@@ -753,6 +790,12 @@ function MovimientoPage() {
     fetchMyMaterials();
   }, []);
 
+  useEffect(() => {
+    if (tipoMovimientoSeleccionado === "devolver") {
+      void actualizarMaterialesConPrestamoActivo();
+    }
+  }, [tipoMovimientoSeleccionado, solicitanteId, materiales]);
+
   // Filtrar movimientos
   const movimientosFiltrados = mostrarSoloPendientes
     ? movimientos.filter((m) => m.estado === "pendiente")
@@ -955,6 +998,7 @@ function MovimientoPage() {
                     variant="bordered"
                     onPress={agregarDetalle}
                     startContent={<Plus className="h-4 w-4" />}
+                    isDisabled={tipoMovimientoSeleccionado === "devolver"}
                   >
                     Agregar Material
                   </Button>
@@ -992,27 +1036,41 @@ function MovimientoPage() {
                         </select>
                       </div>
 
-                      {tipoMovimientoSeleccionado !== "devolver" && (
-                        <div className="w-24">
-                          <label className="block text-xs text-gray-600 mb-1">
-                            Cantidad
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            className="w-full p-2 border rounded-lg text-sm"
-                            value={detalle.cantidad}
-                            onChange={(e) =>
-                              actualizarDetalle(
-                                index,
-                                "cantidad",
-                                Number(e.target.value)
-                              )
+                      {/* Input de cantidad siempre visible; con reglas específicas para 'devolver' */}
+                      <div className="w-24">
+                        <label className="block text-xs text-gray-600 mb-1">
+                          Cantidad
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={
+                            tipoMovimientoSeleccionado === "devolver"
+                              ? Math.max(1, prestamoSeleccionado?.saldoPendiente || 1)
+                              : undefined
+                          }
+                          className="w-full p-2 border rounded-lg text-sm"
+                          value={detalle.cantidad}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            let nuevo = val;
+                            if (Number.isNaN(nuevo) || nuevo < 1) nuevo = 1;
+                            if (tipoMovimientoSeleccionado === "devolver") {
+                              const max = Math.max(
+                                1,
+                                prestamoSeleccionado?.saldoPendiente || 1
+                              );
+                              if (nuevo > max) nuevo = max;
                             }
-                            required
-                          />
-                        </div>
-                      )}
+                            actualizarDetalle(index, "cantidad", nuevo);
+                          }}
+                          required
+                          disabled={
+                            tipoMovimientoSeleccionado === "devolver" &&
+                            !prestamoSeleccionado
+                          }
+                        />
+                      </div>
 
                       {detallesMovimiento.length > 1 && (
                         <Button
