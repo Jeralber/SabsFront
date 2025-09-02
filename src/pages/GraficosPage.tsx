@@ -68,7 +68,7 @@ function GraficosPage() {
   const { fichas } = useFicha();
   const { materiales } = useMaterial();
   const { modulos } = useModulo();
-  const { movimientos } = useMovimiento();
+  const { movimientos, fetchMovimientos, loading: movimientosLoading } = useMovimiento();
   const { municipios } = useMunicipio();
   const { opciones } = useOpcion();
   const { permisos } = usePermiso();
@@ -118,6 +118,21 @@ function GraficosPage() {
       }, 500);
     }
   }, [selectedModule]);
+
+  // Cargar movimientos al montar para asegurar datos del módulo Movimiento
+  useEffect(() => {
+    fetchMovimientos();
+  }, [fetchMovimientos]);
+
+  // Cuando el módulo es "Movimiento", mantener 'data' sincronizado con 'movimientos'
+  useEffect(() => {
+    if (selectedModule === 'Movimiento') {
+      setData(movimientos);
+    }
+  }, [movimientos, selectedModule]);
+
+  // Combinar loading local con loading del hook de movimientos
+  const moduleLoading = isLoading || (selectedModule === 'Movimiento' && movimientosLoading);
 
   // Función para filtrar datos por rango de tiempo
   const filterDataByTime = (data: any[]) => {
@@ -213,25 +228,24 @@ function GraficosPage() {
     );
   };
 
-  // 2. Gráfico de Movimientos por Estado con animaciones
+  // Utilidad para robustecer el filtrado por estado
+  const normalizeEstado = (value?: string | null) =>
+    (value ?? '').toString().trim().toLowerCase();
+
+  // 2. Gráfico de Movimientos por Estado con animaciones (corregido a minúsculas)
   const getMovimientosEstadoChart = () => {
     if (selectedModule !== 'Movimiento') return null;
-    
-    const estados = ['NO_APROBADO', 'APROBADO', 'RECHAZADO'];
+
+    const estados = ['pendiente', 'aprobado', 'rechazado'];
     const colores = getGradientColors(estados.length);
-    
+
     const data = {
-      labels: estados.map(estado => {
-        switch(estado) {
-          case 'NO_APROBADO': return 'Pendientes';
-          case 'APROBADO': return 'Aprobados';
-          case 'RECHAZADO': return 'Rechazados';
-          default: return estado;
-        }
-      }),
+      labels: ['Pendientes', 'Aprobados', 'Rechazados'],
       datasets: [{
         label: 'Movimientos por Estado',
-        data: estados.map(estado => movimientos.filter(m => m.estado === estado).length),
+        data: estados.map(estado =>
+          movimientos.filter(m => normalizeEstado(m.estado) === estado).length
+        ),
         backgroundColor: colores.map(c => c.bg),
         borderColor: colores.map(c => c.border),
         borderWidth: 3,
@@ -241,6 +255,81 @@ function GraficosPage() {
     };
 
     return data;
+  };
+
+  // NUEVO: Gráfico de Movimientos por Tipo de Movimiento
+  const getMovimientosPorTipoChart = () => {
+    if (selectedModule !== 'Movimiento') return null;
+
+    const nombrePorId = new Map<number, string>(
+      (tiposMovimiento || []).map(t => [t.id, (t as any).nombre || (t as any).tipo || `Tipo ${t.id}`])
+    );
+
+    const contador = new Map<string, number>();
+    movimientos.forEach(m => {
+      const nombreTipo = m.tipoMovimiento?.nombre
+        || (m.tipoMovimientoId ? nombrePorId.get(m.tipoMovimientoId) : undefined)
+        || 'Sin tipo';
+      contador.set(nombreTipo, (contador.get(nombreTipo) || 0) + 1);
+    });
+
+    const labels = Array.from(contador.keys());
+    const valores = Array.from(contador.values());
+    const colores = getGradientColors(labels.length);
+
+    return {
+      labels,
+      datasets: [{
+        label: 'Movimientos por Tipo',
+        data: valores,
+        backgroundColor: colores.map(c => c.bg),
+        borderColor: colores.map(c => c.border),
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    };
+  };
+
+  // NUEVO: Tendencia temporal por Estado (respeta tu timeFilter)
+  const getTendenciaTemporalPorEstadoChart = () => {
+    if (selectedModule !== 'Movimiento') return null;
+
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const estados = ['pendiente', 'aprobado', 'rechazado'];
+    const coloresLinea = [
+      { border: 'rgba(59, 130, 246, 1)', bg: 'rgba(59, 130, 246, 0.2)' },   // azul
+      { border: 'rgba(16, 185, 129, 1)', bg: 'rgba(16, 185, 129, 0.2)' },   // verde
+      { border: 'rgba(245, 101, 101, 1)', bg: 'rgba(245, 101, 101, 0.2)' }  // rojo
+    ];
+
+    // Trabajamos con los datos filtrados por tiempo, ya sincronizados a 'movimientos'
+    const datos = filteredData.filter((it: any) => typeof it?.estado !== 'undefined' && it?.fechaCreacion);
+
+    const seriesPorEstado = estados.map(() => Array(12).fill(0) as number[]);
+
+    datos.forEach((item: any) => {
+      const mes = new Date(item.fechaCreacion).getMonth();
+      const idxEstado = estados.indexOf(normalizeEstado(item.estado));
+      if (idxEstado >= 0 && mes >= 0) {
+        seriesPorEstado[idxEstado][mes]++;
+      }
+    });
+
+    return {
+      labels: meses,
+      datasets: estados.map((estado, i) => ({
+        label: `Estado: ${estado.charAt(0).toUpperCase() + estado.slice(1)}`,
+        data: seriesPorEstado[i],
+        borderColor: coloresLinea[i].border,
+        backgroundColor: coloresLinea[i].bg,
+        tension: 0.35,
+        borderWidth: 3,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }))
+    };
   };
 
   // 3. Análisis de Materiales por Categoría
@@ -561,15 +650,15 @@ function GraficosPage() {
         </div>
       </div>
 
-      {/* Loading state */}
-      {isLoading && (
+      {/* Loading state - ahora usa moduleLoading */}
+      {moduleLoading && (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
       )}
 
       {/* Gráficos */}
-      {selectedModule && !isLoading && (
+      {selectedModule && !moduleLoading && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
           
           {/* Gráfico de actividad general (siempre visible) */}
@@ -598,17 +687,61 @@ function GraficosPage() {
             </div>
           </div>
 
-          {/* Gráfico específico de movimientos por estado */}
-          {selectedModule === 'Movimiento' && getMovimientosEstadoChart() && (
+          {/* NUEVO: Movimientos por Estado */}
+          {selectedModule === 'Movimiento' && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] border border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Estados de Movimientos
+                  Movimientos por Estado
                 </h2>
-                <TrendingUp className="w-6 h-6 text-red-500" />
+                <TrendingUp className="w-6 h-6 text-emerald-500" />
               </div>
               <div className="h-80">
-                {renderChart(getMovimientosEstadoChart(), pieOptions)}
+                {(() => {
+                  const data = getMovimientosEstadoChart();
+                  if (!data) return null;
+                  const opts = (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polar') ? pieOptions : enhancedChartOptions;
+                  return renderChart(data, opts);
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* NUEVO: Movimientos por Tipo de Movimiento */}
+          {selectedModule === 'Movimiento' && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Movimientos por Tipo
+                </h2>
+                <PieChart className="w-6 h-6 text-purple-500" />
+              </div>
+              <div className="h-80">
+                {(() => {
+                  const data = getMovimientosPorTipoChart();
+                  if (!data) return null;
+                  const opts = (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polar') ? pieOptions : enhancedChartOptions;
+                  return renderChart(data, opts);
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* NUEVO: Tendencia Temporal por Estado */}
+          {selectedModule === 'Movimiento' && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Tendencia por Estado
+                </h2>
+                <Activity className="w-6 h-6 text-blue-500" />
+              </div>
+              <div className="h-80">
+                {(() => {
+                  const data = getTendenciaTemporalPorEstadoChart();
+                  if (!data) return null;
+                  return renderChart(data, enhancedChartOptions);
+                })()}
               </div>
             </div>
           )}

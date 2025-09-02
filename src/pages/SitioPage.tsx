@@ -8,7 +8,7 @@ import { addToast } from '@heroui/react';
 import { Edit, Trash2, Settings, ExternalLink, MapPin, Hash, Calendar, CheckCircle, XCircle, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { Link } from 'react-router-dom';
+
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -29,7 +29,7 @@ const SitioPage: React.FC = () => {
     deleteSitio
   } = useSitio();
 
-  const { tiposSitio, createTipoSitio } = useTipoSitio();
+  const { tiposSitio } = useTipoSitio();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSitio, setEditingSitio] = useState<Sitio | null>(null);
@@ -135,34 +135,7 @@ const SitioPage: React.FC = () => {
       options: tiposSitio.map(tipo => ({
         label: tipo.nombre,
         value: tipo.id
-      })),
-      allowQuickCreate: true,
-      quickCreateTitle: 'Crear Nuevo Tipo de Sitio',
-      quickCreateFields: [
-        {
-          name: 'nombre',
-          label: 'Nombre',
-          type: 'text',
-          required: true
-        },
-        {
-          name: 'activo',
-          label: 'Activo',
-          type: 'checkbox',
-          required: false
-        }
-      ],
-      onQuickCreate: async (data) => {
-        const response = await createTipoSitio({ ...data, activo: data.activo ?? true });
-        const newTipoSitio = response.data;
-        if (!newTipoSitio || Array.isArray(newTipoSitio)) {
-          throw new Error('Error al crear el tipo de sitio');
-        }
-        return {
-          id: newTipoSitio.id,
-          label: newTipoSitio.nombre
-        };
-      }
+      }))
     },
     {
       name: 'activo',

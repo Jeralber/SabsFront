@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, ReactNode } from "react";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import {
@@ -25,7 +25,9 @@ export type FieldDefinition<T> = {
     | "select"
     | "email"
     | "password"
-    | "array";
+    | "array"
+    | "textarea"
+    | "custom";
   arrayFields?: FieldDefinition<any>[];
   readOnly?: boolean;
   options?: { label: string; value: any }[];
@@ -36,6 +38,14 @@ export type FieldDefinition<T> = {
   min?: number;
   max?: number;
   onChange?: (value: any) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  render?: (params: {
+    value: any;
+    setValue: (v: any) => void;
+    values: Partial<T>;
+    setValues: (vals: Partial<T>) => void;
+  }) => ReactNode;
 };
 
 export type GenericFormProps<T> = {
@@ -46,6 +56,7 @@ export type GenericFormProps<T> = {
   onClose?: () => void;
   title?: string;
   forceHorizontal?: boolean; // Nueva prop para forzar layout horizontal
+  submitLabel?: string;
 };
 
 // Función para obtener el icono según el tipo de campo
@@ -73,6 +84,7 @@ export function GenericForm<T>({
   onCancel,
   title = "Formulario",
   forceHorizontal = false,
+  submitLabel = "Guardar",
 }: GenericFormProps<T>) {
   const [formData, setFormData] = useState<Partial<T>>(initialValues);
   const [showQuickCreate, setShowQuickCreate] = useState<string | null>(null);
@@ -84,14 +96,20 @@ export function GenericForm<T>({
   const maxWidth = useHorizontalLayout ? "max-w-6xl" : "max-w-2xl";
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-    fieldName: keyof T
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+    fieldName: keyof T,
+    field?: FieldDefinition<T>
   ) => {
+    const target = e.target;
     const value =
-      e.target.type === "checkbox"
-        ? (e.target as HTMLInputElement).checked
-        : e.target.value;
+      target instanceof HTMLInputElement && target.type === "checkbox"
+        ? target.checked
+        : (target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value;
+
     setFormData((prev) => ({ ...prev, [fieldName]: value }));
+    if (field?.onChange) {
+      field.onChange(value);
+    }
   };
 
   const handleQuickCreateChange = (
@@ -191,12 +209,13 @@ export function GenericForm<T>({
                           <select
                             name={String(field.name)}
                             value={String(formData[field.name] ?? "")}
-                            onChange={(e) => handleChange(e, field.name)}
+                            onChange={(e) => handleChange(e, field.name, field)}
                             className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
                             required={field.required}
+                            disabled={field.disabled}
                           >
                             <option value="" className="text-gray-500">
-                              Seleccione una opción...
+                              {field.placeholder || "Seleccione una opción..."}
                             </option>
                             {field.options?.map((opt) => (
                               <option key={opt.value} value={opt.value}>
@@ -226,13 +245,36 @@ export function GenericForm<T>({
                           type="checkbox"
                           name={String(field.name)}
                           checked={Boolean(formData[field.name])}
-                          onChange={(e) => handleChange(e, field.name)}
+                          onChange={(e) => handleChange(e, field.name, field)}
                           className="h-5 w-5 text-green-600 focus:ring-green-500 border-2 border-gray-300 rounded-md transition-all duration-200"
                           readOnly={field.readOnly}
                         />
                         <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                           {field.label}
                         </span>
+                      </div>
+                    ) : field.type === "textarea" ? (
+                      <div className="relative">
+                        <textarea
+                          name={String(field.name)}
+                          value={String(formData[field.name] ?? "")}
+                          onChange={(e) => handleChange(e, field.name, field)}
+                          className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                          rows={3}
+                          placeholder={field.placeholder || ""}
+                          readOnly={field.readOnly}
+                          required={field.required}
+                        />
+                      </div>
+                    ) : field.type === "custom" ? (
+                      <div className="relative">
+                        {field.render?.({
+                          value: (formData as any)[field.name],
+                          setValue: (v) =>
+                            setFormData((prev) => ({ ...prev, [field.name]: v })),
+                          values: formData,
+                          setValues: (vals) => setFormData(vals),
+                        })}
                       </div>
                     ) : (
                       <div className="relative">
@@ -242,7 +284,7 @@ export function GenericForm<T>({
                           type={field.type || "text"}
                           isReadOnly={field.readOnly}
                           value={String(formData[field.name] ?? "")}
-                          onChange={(e) => handleChange(e, field.name)}
+                          onChange={(e) => handleChange(e, field.name, field)}
                           className="w-full transition-all duration-200 hover:scale-[1.01]"
                           classNames={{
                             input: "text-base",
@@ -251,6 +293,8 @@ export function GenericForm<T>({
                           }}
                           fullWidth
                           size="lg"
+                          min={field.min}
+                          max={field.max}
                         />
                       </div>
                     )}
@@ -278,7 +322,7 @@ export function GenericForm<T>({
               onClick={handleSubmit}
             >
               <Save size={18} className="mr-2" />
-              Guardar
+              {submitLabel}
             </Button>
           </div>
         </div>

@@ -1,5 +1,5 @@
 // hooks/useMovimientos.ts
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Movimiento } from '../types/movimiento.types';
 import { MovimientoService } from '../services/movimientoService';
 
@@ -8,8 +8,8 @@ export const useMovimiento = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ Fetch movimientos
-  const fetchMovimientos = async () => {
+
+  const fetchMovimientos = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -21,12 +21,12 @@ export const useMovimiento = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // ✅ CORREGIDO: Crear movimiento - sitioOrigenId es requerido
-  const createMovimiento = async (dto: {
+  
+  const createMovimiento = useCallback(async (dto: {
     personaSolicitaId: number;
-    sitioOrigenId: number; // ✅ REQUERIDO
+    sitioOrigenId: number; 
     sitioDestinoId?: number | null;
     detalles: { materialId: number; cantidad: number }[];
   }) => {
@@ -43,10 +43,10 @@ export const useMovimiento = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // ✅ Aprobar movimiento
-  const aprobarMovimiento = async (id: number, aprobadoPorId: number) => {
+  
+  const aprobarMovimiento = useCallback(async (id: number, aprobadoPorId: number) => {
     setLoading(true);
     setError(null);
     try {
@@ -60,10 +60,10 @@ export const useMovimiento = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // ✅ Rechazar movimiento
-  const rechazarMovimiento = async (id: number, rechazadoPorId: number) => {
+ 
+  const rechazarMovimiento = useCallback(async (id: number, rechazadoPorId: number) => {
     setLoading(true);
     setError(null);
     try {
@@ -77,10 +77,9 @@ export const useMovimiento = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // ✅ Devolver material
-  const devolverMaterial = async (movimientoOrigenId: number, dto: {
+  const devolverMaterial = useCallback(async (movimientoOrigenId: number, dto: {
     personaSolicitaId: number;
     detalles: { materialId: number; cantidad: number }[];
   }) => {
@@ -97,10 +96,9 @@ export const useMovimiento = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // ✅ Obtener movimiento por ID
-  const fetchMovimientoById = async (id: number) => {
+  const fetchMovimientoById = useCallback(async (id: number) => {
     setLoading(true);
     setError(null);
     try {
@@ -113,10 +111,9 @@ export const useMovimiento = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // ✅ CORREGIDO: Obtener saldo pendiente
-  const fetchSaldoPendiente = async (materialId: number) => {
+  const fetchSaldoPendiente = useCallback(async (materialId: number) => {
     try {
       const res = await MovimientoService.getSaldoPendiente(materialId);
       return res.saldoPendiente;
@@ -124,10 +121,9 @@ export const useMovimiento = () => {
       console.error('Error fetching saldo pendiente:', err);
       return 0;
     }
-  };
+  }, []);
 
-  // ✅ Obtener préstamos activos por material
-  const getPrestamosActivos = async (materialId: number) => {
+  const getPrestamosActivos = useCallback(async (materialId: number) => {
     setLoading(true);
     setError(null);
     try {
@@ -140,7 +136,7 @@ export const useMovimiento = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return {
     movimientos,
@@ -157,4 +153,4 @@ export const useMovimiento = () => {
   };
 };
 
-export const useMovimientos = useMovimiento; // Alias para compatibilidad
+export const useMovimientos = useMovimiento;

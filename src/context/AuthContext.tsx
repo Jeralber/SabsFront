@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const userData = await authService.login({ email, password });
       setUser(userData);
-      // No necesitamos retornar nada aquí, ya que el estado se actualiza con setUser
+
     } catch (error) {
       console.error("Error durante el login:", error);
       throw error;
@@ -76,8 +76,4 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuth = () => useContext(AuthContext);
 
 
-// En la función login, elimina la línea que guarda en localStorage:
-// localStorage.setItem(USER_KEY, JSON.stringify(userData));
-
-// Solo guarda los datos del usuario sin el token:
 

@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 export const Dashboard = () => {
   const { user } = useAuth();
-  const { movimientos } = useMovimiento();
+  const { movimientos, fetchMovimientos, loading: movLoading, error: movError } = useMovimiento();
   const { materiales } = useMaterial();
   const { personas } = usePersona();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -30,16 +30,23 @@ export const Dashboard = () => {
     return () => clearInterval(interval);
   }, [carouselImages.length]);
 
+  useEffect(() => {
+    void fetchMovimientos();
+  }, [fetchMovimientos]);
+
   // Estadísticas mejoradas con más contexto
-  const movimientosPendientes = movimientos.filter(m => m.estado === 'pendiente').length;
-  const movimientosAprobados = movimientos.filter(m => m.estado === 'aprobado').length;
-  const movimientosRechazados = movimientos.filter(m => m.estado === 'rechazado').length;
+  const normalizeEstado = (estado?: string) =>
+    (estado ?? '').toString().trim().toLowerCase();
+
+  const movimientosPendientes = movimientos.filter(m => normalizeEstado(m.estado) === 'pendiente').length;
+  const movimientosAprobados = movimientos.filter(m => normalizeEstado(m.estado) === 'aprobado').length;
+  const movimientosRechazados = movimientos.filter(m => normalizeEstado(m.estado) === 'rechazado').length;
   const movimientosTotal = movimientos.length;
-  
+
   const materialesDisponibles = materiales.filter(m => m.activo).length;
   const materialesInactivos = materiales.filter(m => !m.activo).length;
   const materialesTotal = materiales.length;
-  
+
   const usuariosActivos = personas.filter(p => p.activo).length;
   const usuariosInactivos = personas.filter(p => !p.activo).length;
   const usuariosTotal = personas.length;

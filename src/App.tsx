@@ -18,7 +18,7 @@ import CentroPage from "./pages/CentroPage";
 import { Layout } from "@/layout/layout";
 import "@/styles/globals.css";
 import TipoSitioPage from "./pages/TipoSitioPage";
-import MovimientoPage from "./pages/MovimientoPage"; // Ahora será la página principal de inventario
+import MovimientoPage from "./pages/MovimientoPage"; 
 import TipoMaterialPage from "./pages/TipoMaterialPage";
 import CategoriaMaterialPage from "./pages/CategoriaMaterialPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";

@@ -6,6 +6,7 @@ import { UnidadMedida } from '../types/unidad-medida.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -123,27 +124,52 @@ const UnidadMedidaPage: React.FC = () => {
     const unidadMedida = unidadesMedida.find(u => u.id === id);
     if (!unidadMedida) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar la unidad de medida "${unidadMedida.unidad}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Eliminar unidad de medida?',
+      text: `Se eliminará "${unidadMedida.unidad}". Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteUnidadMedida(id);
-        addToast({
-          title: 'Unidad de medida eliminada',
-          description: `La unidad de medida "${unidadMedida.unidad}" ha sido eliminada exitosamente.`,
-          color: 'success'
+        await Swal.fire({
+          title: 'Eliminado',
+          text: `La unidad de medida "${unidadMedida.unidad}" ha sido eliminada.`,
+          icon: 'success',
+          confirmButtonColor: '#3085d6'
         });
       } catch (error) {
-        addToast({
+        await Swal.fire({
           title: 'Error al eliminar',
-          description: error instanceof Error ? error.message : 'Error desconocido al eliminar la unidad de medida',
-          color: 'danger'
+          text: error instanceof Error ? error.message : 'Error desconocido al eliminar la unidad de medida',
+          icon: 'error',
+          confirmButtonColor: '#d33'
         });
       }
     }
   };
+
+  const actions = [
+    {
+      label: 'Editar',
+      icon: <Edit size={16} />,
+      onClick: handleEdit,
+      variant: 'primary' as const
+    },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={16} />,
+      onClick: (unidadMedida: UnidadMedida) => handleDelete(unidadMedida.id),
+      variant: 'danger' as const
+    }
+  ];
 
   const handleSubmit = async (data: Partial<UnidadMedida>) => {
     try {
@@ -177,21 +203,6 @@ const UnidadMedidaPage: React.FC = () => {
     setIsFormOpen(false);
     setEditingUnidadMedida(null);
   };
-
-  const actions = [
-    {
-      label: 'Editar',
-      icon: <Edit size={16} />,
-      onClick: handleEdit,
-      variant: 'primary' as const
-    },
-    {
-      label: 'Eliminar',
-      icon: <Trash2 size={16} />,
-      onClick: (unidadMedida: UnidadMedida) => handleDelete(unidadMedida.id),
-      variant: 'danger' as const
-    }
-  ];
 
   if (error) {
     return (

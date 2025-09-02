@@ -32,6 +32,11 @@ import {
   ShoppingCart,
   Undo2,
   HandHeart,
+  X,
+  Save,
+  Type,
+  Hash,
+ 
 } from "lucide-react";
 import { useSitio } from "@/hooks/useSitio";
 import { useAuth } from "@/context/AuthContext";
@@ -196,17 +201,12 @@ function MovimientoPage() {
 
   const getMaterialesFiltrados = () => {
     if (tipoMovimientoSeleccionado === "peticion") {
-      return materiales.filter((material) => {
-        const esOriginal = material.esOriginal !== false;
-        const activo = !!material.activo;
+     
+      if (sitioOrigenId != null) {
+        return materiales.filter((material) => {
+          const esOriginal = material.esOriginal !== false;
+          const activo = !!material.activo;
 
-        const tieneStockActivoEnAlgunaParte =
-          Array.isArray(material.stocks) &&
-          material.stocks.some(
-            (stock: any) => stock.activo && Number(stock.cantidad) > 0
-          );
-
-        if (sitioOrigenId != null) {
           const stockEnOrigen = Array.isArray(material.stocks)
             ? material.stocks
                 .filter(
@@ -221,19 +221,19 @@ function MovimientoPage() {
                 )
             : 0;
 
-          const registradoAqui =
-            Number((material as any).sitioId) === Number(sitioOrigenId);
+          return esOriginal && activo && stockEnOrigen > 0;
+        });
+      }
 
-          // Mantener visibles los registrados aquí aunque stock en origen sea 0 (solo vista)
-          return (
-            esOriginal &&
-            activo &&
-            (registradoAqui ||
-              stockEnOrigen > 0 ||
-              tieneStockActivoEnAlgunaParte)
+      // Si no hay sitio seleccionado, mantener comportamiento previo (stock activo en alguna parte)
+      return materiales.filter((material) => {
+        const esOriginal = material.esOriginal !== false;
+        const activo = !!material.activo;
+        const tieneStockActivoEnAlgunaParte =
+          Array.isArray(material.stocks) &&
+          material.stocks.some(
+            (stock: any) => stock.activo && Number(stock.cantidad) > 0
           );
-        }
-
         return esOriginal && activo && tieneStockActivoEnAlgunaParte;
       });
     } else if (tipoMovimientoSeleccionado === "devolver") {
@@ -245,17 +245,12 @@ function MovimientoPage() {
         return esOriginal && activo && tienePrestamoActivo;
       });
     } else if (tipoMovimientoSeleccionado === "prestamo") {
-      return materiales.filter((material) => {
-        const esOriginal = material.esOriginal !== false;
-        const activo = !!material.activo;
+      // Si hay sitio de origen seleccionado, mostrar SOLO materiales con stock activo en ese sitio
+      if (sitioOrigenId != null) {
+        return materiales.filter((material) => {
+          const esOriginal = material.esOriginal !== false;
+          const activo = !!material.activo;
 
-        const tieneStockActivoEnAlgunaParte =
-          Array.isArray(material.stocks) &&
-          material.stocks.some(
-            (stock: any) => stock.activo && Number(stock.cantidad) > 0
-          );
-
-        if (sitioOrigenId != null) {
           const stockEnOrigen = Array.isArray(material.stocks)
             ? material.stocks
                 .filter(
@@ -270,31 +265,19 @@ function MovimientoPage() {
                 )
             : 0;
 
-          const registradoAqui =
-            Number((material as any).sitioId) === Number(sitioOrigenId);
+          return esOriginal && activo && stockEnOrigen > 0;
+        });
+      }
 
-          const incluir =
-            esOriginal &&
-            activo &&
-            (registradoAqui ||
-              stockEnOrigen > 0 ||
-              tieneStockActivoEnAlgunaParte);
-
-          if (!incluir) {
-            console.log("[DEBUG][Filtro prestamo] Excluido", {
-              materialId: material.id,
-              nombre: material.nombre,
-              sitioOrigenId,
-              registradoAqui,
-              stockEnOrigen,
-              tieneStockActivoEnAlgunaParte,
-              stocks: material.stocks,
-            });
-          }
-
-          return incluir;
-        }
-
+      // Si no hay sitio seleccionado, mantener comportamiento previo (stock activo en alguna parte)
+      return materiales.filter((material) => {
+        const esOriginal = material.esOriginal !== false;
+        const activo = !!material.activo;
+        const tieneStockActivoEnAlgunaParte =
+          Array.isArray(material.stocks) &&
+          material.stocks.some(
+            (stock: any) => stock.activo && Number(stock.cantidad) > 0
+          );
         return esOriginal && activo && tieneStockActivoEnAlgunaParte;
       });
     }
@@ -902,222 +885,310 @@ function MovimientoPage() {
         onClose={() => setIsFormOpen(false)}
         size="2xl"
         scrollBehavior="inside"
+        classNames={{
+          base: "bg-black/60 backdrop-blur-sm",
+          wrapper: "animate-in fade-in duration-200",
+        }}
       >
-        <ModalContent>
-          <ModalHeader>
-            <h2 className="text-xl font-bold">
-              {tipoMovimientoSeleccionado === "peticion" && "Nueva Petición"}
-              {tipoMovimientoSeleccionado === "prestamo" && "Nuevo Préstamo"}
-              {tipoMovimientoSeleccionado === "devolver" && "Nueva Devolución"}
-            </h2>
-          </ModalHeader>
-          <ModalBody>
-            <div className="space-y-6">
-              {/* Sitios (solo para peticiones y préstamos) */}
-              {(tipoMovimientoSeleccionado === "peticion" ||
-                tipoMovimientoSeleccionado === "prestamo") && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Sitio Origen
-                    </label>
-                    <select
-                      className="w-full p-2 border rounded-lg"
-                      value={sitioOrigenId || ""}
-                      onChange={handleChangeSitioOrigen}
-                    >
-                      <option value="">Seleccionar sitio origen</option>
-                      {sitios.map((sitio) => (
-                        <option key={sitio.id} value={sitio.id}>
-                          {sitio.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Sitio Destino *
-                    </label>
-                    <select
-                      className="w-full p-2 border rounded-lg"
-                      value={sitioDestinoId || ""}
-                      onChange={(e) =>
-                        setSitioDestinoId(Number(e.target.value) || null)
-                      }
-                      required
-                    >
-                      <option value="">Seleccionar sitio destino</option>
-                      {sitios.map((sitio) => (
-                        <option key={sitio.id} value={sitio.id}>
-                          {sitio.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+        {/* Overlay con animación */}
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          {/* Modal principal con animación y ancho dinámico */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden w-full max-w-4xl mx-4 animate-in slide-in-from-bottom-4 duration-300 border border-gray-200 dark:border-gray-700">
+            {/* Header del formulario con gradiente verde */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Type size={20} className="text-white" />
                 </div>
-              )}
+                <h2 className="text-xl font-semibold text-white">
+                  {tipoMovimientoSeleccionado === "peticion" && "Nueva Petición"}
+                  {tipoMovimientoSeleccionado === "prestamo" && "Nuevo Préstamo"}
+                  {tipoMovimientoSeleccionado === "devolver" && "Nueva Devolución"}
+                </h2>
+              </div>
+              <Button
+                type="button"
+                variant="light"
+                size="sm"
+                className="text-white hover:bg-white/20 transition-colors duration-200"
+                onClick={() => setIsFormOpen(false)}
+              >
+                <X size={20} />
+              </Button>
+            </div>
 
-              {/* Solicitante (solo para admin) */}
-              {isAdmin && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    {tipoMovimientoSeleccionado === "peticion" &&
-                      "Solicitante *"}
-                    {tipoMovimientoSeleccionado === "prestamo" &&
-                      "Persona que recibe *"}
-                    {tipoMovimientoSeleccionado === "devolver" &&
-                      "Persona que devuelve *"}
-                  </label>
-                  <select
-                    className="w-full p-2 border rounded-lg"
-                    value={solicitanteId || ""}
-                    onChange={(e) =>
-                      setSolicitanteId(Number(e.target.value) || null)
-                    }
-                    required
-                  >
-                    <option value="">Seleccionar persona</option>
-                    {personas.map((persona) => (
-                      <option key={persona.id} value={persona.id}>
-                        {persona.nombre} {persona.apellido}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            {/* Contenido del formulario */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-6">
+                {/* Grid dinámico basado en el número de campos */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Sitios (solo para peticiones y préstamos) */}
+                  {(tipoMovimientoSeleccionado === "peticion" ||
+                    tipoMovimientoSeleccionado === "prestamo") && (
+                    <>
+                      <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                        {/* Label con icono */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Type size={16} className="text-gray-400" />
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                            Sitio Origen
+                            <span className="text-red-500 text-xs">*</span>
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <select
+                            className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                            value={sitioOrigenId || ""}
+                            onChange={handleChangeSitioOrigen}
+                            required
+                          >
+                            <option value="" className="text-gray-500">
+                              Seleccione un sitio origen...
+                            </option>
+                            {sitios.map((sitio) => (
+                              <option key={sitio.id} value={sitio.id}>
+                                {sitio.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
 
-              {/* Detalles de materiales */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <label className="block text-sm font-medium">
-                    Materiales *
-                  </label>
-                  <Button
-                    size="sm"
-                    color="primary"
-                    variant="bordered"
-                    onPress={agregarDetalle}
-                    startContent={<Plus className="h-4 w-4" />}
-                    isDisabled={tipoMovimientoSeleccionado === "devolver"}
-                  >
-                    Agregar Material
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {detallesMovimiento.map((detalle, index) => (
-                    <div key={index} className="flex gap-3 items-end">
-                      <div className="flex-1">
-                        <label className="block text-xs text-gray-600 mb-1">
-                          Material
-                        </label>
-
-                        <select
-                          className="w-full p-2 border rounded-lg text-sm"
-                          value={detalle.materialId}
-                          onChange={(e) => {
-                            const value = Number(e.target.value);
-                            actualizarDetalle(index, "materialId", value);
-                            if (
-                              tipoMovimientoSeleccionado === "devolver" &&
-                              value > 0
-                            ) {
-                              void obtenerPrestamosActivos(value);
+                      <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                        {/* Label con icono */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Type size={16} className="text-gray-400" />
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                            Sitio Destino
+                            <span className="text-red-500 text-xs">*</span>
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <select
+                            className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                            value={sitioDestinoId || ""}
+                            onChange={(e) =>
+                              setSitioDestinoId(Number(e.target.value) || null)
                             }
-                          }}
+                            required
+                          >
+                            <option value="" className="text-gray-500">
+                              Seleccione un sitio destino...
+                            </option>
+                            {sitios.map((sitio) => (
+                              <option key={sitio.id} value={sitio.id}>
+                                {sitio.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Solicitante (solo para admin) */}
+                  {isAdmin && (
+                    <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                      {/* Label con icono */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <Type size={16} className="text-gray-400" />
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                          {tipoMovimientoSeleccionado === "peticion" &&
+                            "Solicitante"}
+                          {tipoMovimientoSeleccionado === "prestamo" &&
+                            "Persona que recibe"}
+                          {tipoMovimientoSeleccionado === "devolver" &&
+                            "Persona que devuelve"}
+                          <span className="text-red-500 text-xs">*</span>
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <select
+                          className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                          value={solicitanteId || ""}
+                          onChange={(e) =>
+                            setSolicitanteId(Number(e.target.value) || null)
+                          }
                           required
                         >
-                          <option value={0}>Seleccionar material</option>
-                          {getMaterialesFiltrados().map((material) => (
-                            <option key={material.id} value={material.id}>
-                              {crearEtiquetaMaterial(material)}
+                          <option value="" className="text-gray-500">
+                            Seleccione una persona...
+                          </option>
+                          {personas.map((persona) => (
+                            <option key={persona.id} value={persona.id}>
+                              {persona.nombre} {persona.apellido}
                             </option>
                           ))}
                         </select>
                       </div>
-
-                      {/* Input de cantidad siempre visible; con reglas específicas para 'devolver' */}
-                      <div className="w-24">
-                        <label className="block text-xs text-gray-600 mb-1">
-                          Cantidad
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={
-                            tipoMovimientoSeleccionado === "devolver"
-                              ? Math.max(1, prestamoSeleccionado?.saldoPendiente || 1)
-                              : undefined
-                          }
-                          className="w-full p-2 border rounded-lg text-sm"
-                          value={detalle.cantidad}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            let nuevo = val;
-                            if (Number.isNaN(nuevo) || nuevo < 1) nuevo = 1;
-                            if (tipoMovimientoSeleccionado === "devolver") {
-                              const max = Math.max(
-                                1,
-                                prestamoSeleccionado?.saldoPendiente || 1
-                              );
-                              if (nuevo > max) nuevo = max;
-                            }
-                            actualizarDetalle(index, "cantidad", nuevo);
-                          }}
-                          required
-                          disabled={
-                            tipoMovimientoSeleccionado === "devolver" &&
-                            !prestamoSeleccionado
-                          }
-                        />
-                      </div>
-
-                      {detallesMovimiento.length > 1 && (
-                        <Button
-                          size="sm"
-                          color="danger"
-                          variant="light"
-                          onPress={() => removerDetalle(index)}
-                          isIconOnly
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
 
-              {/* Observaciones (solo para peticiones y préstamos) */}
-              {tipoMovimientoSeleccionado !== "devolver" && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Observaciones
-                  </label>
-                  <textarea
-                    className="w-full p-2 border rounded-lg"
-                    rows={3}
-                    value={observaciones}
-                    onChange={(e) => setObservaciones(e.target.value)}
-                    placeholder="Ingrese observaciones adicionales..."
-                  />
+                {/* Detalles de materiales */}
+                <div className="group transition-all duration-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Type size={16} className="text-gray-400" />
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                        Materiales
+                        <span className="text-red-500 text-xs">*</span>
+                      </label>
+                    </div>
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="bordered"
+                      className="px-4 text-green-600 hover:text-green-700 border-2 border-green-200 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-200"
+                      onClick={agregarDetalle}
+                      isDisabled={tipoMovimientoSeleccionado === "devolver"}
+                    >
+                      <Plus size={18} />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {detallesMovimiento.map((detalle, index) => (
+                      <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
+                        <div className="flex gap-4 items-end">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Type size={14} className="text-gray-400" />
+                              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                Material
+                              </label>
+                            </div>
+                            <select
+                              className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500 text-sm"
+                              value={detalle.materialId}
+                              onChange={(e) => {
+                                const value = Number(e.target.value);
+                                actualizarDetalle(index, "materialId", value);
+                                if (
+                                  tipoMovimientoSeleccionado === "devolver" &&
+                                  value > 0
+                                ) {
+                                  void obtenerPrestamosActivos(value);
+                                }
+                              }}
+                              required
+                            >
+                              <option value={0} className="text-gray-500">
+                                Seleccionar material...
+                              </option>
+                              {getMaterialesFiltrados().map((material) => (
+                                <option key={material.id} value={material.id}>
+                                  {crearEtiquetaMaterial(material)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="w-24">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Hash size={14} className="text-gray-400" />
+                              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                Cantidad
+                              </label>
+                            </div>
+                            <input
+                              type="number"
+                              min={1}
+                              max={
+                                tipoMovimientoSeleccionado === "devolver"
+                                  ? Math.max(1, prestamoSeleccionado?.saldoPendiente || 1)
+                                  : undefined
+                              }
+                              className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500 text-sm"
+                              value={detalle.cantidad}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                let nuevo = val;
+                                if (Number.isNaN(nuevo) || nuevo < 1) nuevo = 1;
+                                if (tipoMovimientoSeleccionado === "devolver") {
+                                  const max = Math.max(
+                                    1,
+                                    prestamoSeleccionado?.saldoPendiente || 1
+                                  );
+                                  if (nuevo > max) nuevo = max;
+                                }
+                                actualizarDetalle(index, "cantidad", nuevo);
+                              }}
+                              required
+                              disabled={
+                                tipoMovimientoSeleccionado === "devolver" &&
+                                !prestamoSeleccionado
+                              }
+                            />
+                          </div>
+
+                          {detallesMovimiento.length > 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="light"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 p-2"
+                              onClick={() => removerDetalle(index)}
+                            >
+                              <Minus size={16} />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
+
+                {/* Observaciones (solo para peticiones y préstamos) */}
+                {tipoMovimientoSeleccionado !== "devolver" && (
+                  <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                    {/* Label con icono */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Type size={16} className="text-gray-400" />
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Observaciones
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <textarea
+                        className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                        rows={3}
+                        value={observaciones}
+                        onChange={(e) => setObservaciones(e.target.value)}
+                        placeholder="Ingrese observaciones adicionales..."
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="danger"
-              variant="light"
-              onPress={() => setIsFormOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button color="primary" onPress={handleSubmit} isLoading={loading}>
-              Crear Movimiento
-            </Button>
-          </ModalFooter>
-        </ModalContent>
+
+            {/* Footer con botones */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                type="button"
+                variant="bordered"
+                size="lg"
+                className="px-6 text-gray-600 hover:text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                onClick={() => setIsFormOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                size="lg"
+                className="px-6 bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                onClick={handleSubmit}
+                isLoading={loading}
+              >
+                <Save size={18} className="mr-2" />
+                {tipoMovimientoSeleccionado === "peticion" && "Crear Petición"}
+                {tipoMovimientoSeleccionado === "prestamo" && "Crear Préstamo"}
+                {tipoMovimientoSeleccionado === "devolver" && "Crear Devolución"}
+              </Button>
+            </div>
+          </div>
+        </div>
       </Modal>
 
       {/* Modal de detalles */}
@@ -1126,8 +1197,8 @@ function MovimientoPage() {
         onClose={() => setIsDetallesModalOpen(false)}
         size="3xl"
       >
-        <ModalContent>
-          <ModalHeader>
+        <ModalContent className="rounded-lg overflow-hidden">
+          <ModalHeader className="bg-emerald-600 text-white">
             <h2 className="text-xl font-bold">
               Detalles del Movimiento #{selectedMovimiento?.id}
             </h2>
@@ -1280,9 +1351,9 @@ function MovimientoPage() {
         size="lg"
         scrollBehavior="inside"
       >
-        <ModalContent>
-          <ModalHeader>
-            <h2 className="text-lg font-bold">Seleccionar préstamo activo</h2>
+        <ModalContent className="rounded-lg overflow-hidden">
+          <ModalHeader className="bg-emerald-600 text-white">
+            <h2 className="text-xl font-bold">Seleccionar Préstamo Activo</h2>
           </ModalHeader>
           <ModalBody>
             {!materialParaDevolucion && (
@@ -1314,8 +1385,8 @@ function MovimientoPage() {
                       </p>
                     </div>
                     <Button
-                      color="primary"
                       size="sm"
+                      className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-700 hover:to-emerald-600"
                       onPress={() => seleccionarPrestamo(p)}
                     >
                       Seleccionar
@@ -1325,7 +1396,7 @@ function MovimientoPage() {
               </div>
             )}
           </ModalBody>
-          <ModalFooter>
+          <ModalFooter className="border-t border-gray-200 dark:border-gray-700">
             <Button
               variant="light"
               onPress={() => setIsSeleccionPrestamoModalOpen(false)}
