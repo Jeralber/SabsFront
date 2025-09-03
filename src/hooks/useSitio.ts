@@ -53,6 +53,24 @@ export const useSitio = () => {
     }
   }, []);
 
+  const fetchByTipoSitio = useCallback(async (tipoSitioId: number) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await sitioService.getByTipoSitio(tipoSitioId);
+      setState(prev => ({
+        ...prev,
+        sitios: Array.isArray(response.data) ? response.data : [],
+        loading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al cargar sitios por tipo'
+      }));
+    }
+  }, []);
+
   const createSitio = useCallback(async (sitio: Partial<Sitio>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
@@ -126,6 +144,7 @@ export const useSitio = () => {
     fetchSitioById,
     createSitio,
     updateSitio,
-    deleteSitio
+    deleteSitio,
+    fetchByTipoSitio
   };
 };

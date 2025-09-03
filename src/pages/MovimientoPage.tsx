@@ -1,15 +1,45 @@
-import React, { useState } from 'react';
-import { DataTable } from '../components/molecules/DataTable';
-import { GenericForm, FieldDefinition } from '../components/molecules/GenericForm';
-import { useMovimiento } from '../hooks/useMovimiento';
-import { useTipoMovimiento } from '../hooks/useTipoMovimiento';
-import { usePersona } from '../hooks/usePersona';
-import { useMaterial } from '../hooks/useMaterial';
+import React, { useState, useEffect } from "react";
+import { DataTable } from "../components/molecules/DataTable";
+import { useMovimiento } from "../hooks/useMovimiento";
+import { useTipoMovimiento } from "../hooks/useTipoMovimiento";
+import { usePersona } from "../hooks/usePersona";
+import { useMaterial } from "../hooks/useMaterial";
+import { useDetalles } from "../hooks/useDetalles";
+import { Movimiento, CreateMovimientoDto } from "../types/movimiento.types";
+import { Material } from "../types/material.types";
+import { materialService } from "@/services/materialService";
 
-import { Movimiento } from '../types/movimiento.types';
-import { addToast } from '@heroui/react';
-import { Edit, Trash2,  ArrowUp, ArrowDown } from 'lucide-react';
-
+import {
+  addToast,
+  Card,
+  CardBody,
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@heroui/react";
+import {
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Plus,
+  Minus,
+  ShoppingCart,
+  Undo2,
+  HandHeart,
+  X,
+  Save,
+  Type,
+  Hash,
+ 
+} from "lucide-react";
+import { useSitio } from "@/hooks/useSitio";
+import { useAuth } from "@/context/AuthContext";
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -20,277 +50,1362 @@ type Column<T> = {
   width?: string;
 };
 
-const MovimientoPage: React.FC = () => {
+type TipoMovimientoSeleccionado = "peticion" | "devolver" | "prestamo" | null;
+
+type DetalleMovimiento = {
+  materialId: number;
+  cantidad: number;
+  material?: Material;
+};
+
+function MovimientoPage() {
+  const { sitios } = useSitio();
+  const { user } = useAuth();
+
+  const isAdmin = user?.usuario?.rol?.toLowerCase() === "administrador";
+
   const {
     movimientos,
     loading,
-    error,
+    fetchMovimientos,
     createMovimiento,
-    updateMovimiento,
-    deleteMovimiento
+    aprobarMovimiento,
+    rechazarMovimiento,
+    devolverMaterial,
+    getPrestamosActivos, // ✅ AGREGADO
   } = useMovimiento();
 
-  const { tiposMovimiento } = useTipoMovimiento();
-  const { personas } = usePersona();
-  const { materiales } = useMaterial();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingMovimiento, setEditingMovimiento] = useState<Movimiento | null>(null);
+  const { tiposMovimiento, fetchTiposMovimiento } = useTipoMovimiento();
+  const { personas, fetchPersonas } = usePersona();
+  const { materiales, fetchMyMaterials, } =
+    useMaterial();
 
+  const {
+    detalles,
+    fetchDetallesPorMovimiento,
+    loading: detallesLoading,
+  } = useDetalles();
+
+  // Estados del componente
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDetallesModalOpen, setIsDetallesModalOpen] = useState(false);
+  const [selectedMovimiento, setSelectedMovimiento] =
+    useState<Movimiento | null>(null);
+  const [tipoMovimientoSeleccionado, setTipoMovimientoSeleccionado] =
+    useState<TipoMovimientoSeleccionado>(null);
+  const [mostrarSoloPendientes, setMostrarSoloPendientes] = useState(false);
+  const [detallesMovimiento, setDetallesMovimiento] = useState<
+    DetalleMovimiento[]
+  >([{ materialId: 0, cantidad: 1 }]);
+  const [sitioOrigenId, setSitioOrigenId] = useState<number | null>(null);
+  const [sitioDestinoId, setSitioDestinoId] = useState<number | null>(null);
+  const [observaciones, setObservaciones] = useState("");
+  const [solicitanteId, setSolicitanteId] = useState<number | null>(null);
+
+  // ✅ NUEVOS ESTADOS para manejo de préstamos activos
+  const [prestamosActivos, setPrestamosActivos] = useState<any[]>([]);
+  const [isSeleccionPrestamoModalOpen, setIsSeleccionPrestamoModalOpen] =
+    useState(false);
+  const [materialParaDevolucion, setMaterialParaDevolucion] = useState<
+    number | null
+  >(null);
+  const [prestamoSeleccionado, setPrestamoSeleccionado] = useState<any | null>(
+    null
+  );
+  const [materialesConPrestamoActivoIds, setMaterialesConPrestamoActivoIds] = useState<number[]>([]);
+
+  const actualizarMaterialesConPrestamoActivo = async () => {
+    if (tipoMovimientoSeleccionado !== "devolver") {
+      setMaterialesConPrestamoActivoIds([]);
+      return;
+    }
+    try {
+      const personaFiltroId = isAdmin ? solicitanteId : (user?.usuario?.id || null);
+      const candidatos = materiales.filter((m) => (m.esOriginal !== false) && !!m.activo);
+
+      const resultados = await Promise.allSettled(
+        candidatos.map(async (m) => {
+          const prestamos = await getPrestamosActivos(m.id);
+          const prestamosConSaldo = (prestamos || []).filter((p: any) => (p.saldoPendiente ?? 0) > 0);
+          const prestamosFiltrados = personaFiltroId
+            ? prestamosConSaldo.filter((p: any) => p.personaSolicitaId === personaFiltroId)
+            : prestamosConSaldo;
+
+          return prestamosFiltrados.length > 0 ? m.id : null;
+        })
+      );
+
+      const ids = resultados
+        .filter((r): r is PromiseFulfilledResult<number | null> => r.status === "fulfilled")
+        .map((r) => r.value)
+        .filter((id): id is number => id != null);
+
+      setMaterialesConPrestamoActivoIds(ids);
+    } catch (e) {
+      console.error("Error actualizando materiales con préstamo activo:", e);
+      setMaterialesConPrestamoActivoIds([]);
+    }
+  };
+
+  // Funciones de utilidad
+  const crearEtiquetaMaterial = (material: Material) => {
+    const sitioInfo = material.sitio ? ` (${material.sitio.nombre})` : "";
+
+    let stockInfo = "";
+    let estadoInfo = "";
+
+    if (!material.activo) {
+      estadoInfo = " [INACTIVO]";
+    }
+
+    if (material.esOriginal === false) {
+      if (material.cantidadPrestada && material.cantidadPrestada > 0) {
+        stockInfo = ` - Pendiente: ${material.cantidadPrestada}`;
+        estadoInfo = " [PRÉSTAMO ACTIVO]";
+      } else {
+        estadoInfo = " [PRÉSTAMO DEVUELTO]";
+      }
+    } else if (material.stocks && material.stocks.length > 0) {
+      // Si hay sitio de origen seleccionado, mostrar stock en ese sitio
+      if (sitioOrigenId != null) {
+        const stockEnOrigen = material.stocks
+          .filter(
+            (s: any) =>
+              s.activo &&
+              Number(s.sitioId ?? (material as any).sitioId ?? -1) ===
+                Number(sitioOrigenId)
+          )
+          .reduce(
+            (total: number, s: any) => total + (Number(s.cantidad) || 0),
+            0
+          );
+        const registradoAqui =
+          Number((material as any).sitioId) === Number(sitioOrigenId);
+        stockInfo = ` - Stock en origen: ${stockEnOrigen}${registradoAqui ? " [REGISTRADO AQUÍ]" : ""}`;
+      } else {
+        // Si no hay sitio seleccionado aún, mostrar total global
+        const stockTotal = material.stocks
+          .filter((s: any) => s.activo)
+          .reduce(
+            (total: number, s: any) => total + (Number(s.cantidad) || 0),
+            0
+          );
+        stockInfo = ` - Stock: ${stockTotal}`;
+      }
+    } else {
+      stockInfo = " - Sin stock";
+    }
+
+    return `${material.nombre}${sitioInfo}${stockInfo}${estadoInfo}`;
+  };
+
+  const getMaterialesFiltrados = () => {
+    if (tipoMovimientoSeleccionado === "peticion") {
+     
+      if (sitioOrigenId != null) {
+        return materiales.filter((material) => {
+          const esOriginal = material.esOriginal !== false;
+          const activo = !!material.activo;
+
+          const stockEnOrigen = Array.isArray(material.stocks)
+            ? material.stocks
+                .filter(
+                  (stock: any) =>
+                    stock.activo &&
+                    Number(stock.sitioId) === Number(sitioOrigenId) &&
+                    Number(stock.cantidad) > 0
+                )
+                .reduce(
+                  (acc: number, s: any) => acc + Number(s.cantidad || 0),
+                  0
+                )
+            : 0;
+
+          return esOriginal && activo && stockEnOrigen > 0;
+        });
+      }
+
+      return materiales.filter((material) => {
+        const esOriginal = material.esOriginal !== false;
+        const activo = !!material.activo;
+        const tieneStockActivoEnAlgunaParte =
+          Array.isArray(material.stocks) &&
+          material.stocks.some(
+            (stock: any) => stock.activo && Number(stock.cantidad) > 0
+          );
+        return esOriginal && activo && tieneStockActivoEnAlgunaParte;
+      });
+    } else if (tipoMovimientoSeleccionado === "devolver") {
+      // Solo materiales ORIGINALES activos que tengan préstamo activo (opcionalmente del solicitante)
+      return materiales.filter((material) => {
+        const esOriginal = material.esOriginal !== false;
+        const activo = !!material.activo;
+        const tienePrestamoActivo = materialesConPrestamoActivoIds.includes(material.id);
+        return esOriginal && activo && tienePrestamoActivo;
+      });
+    } else if (tipoMovimientoSeleccionado === "prestamo") {
+      // Si hay sitio de origen seleccionado, mostrar SOLO materiales con stock activo en ese sitio
+      if (sitioOrigenId != null) {
+        return materiales.filter((material) => {
+          const esOriginal = material.esOriginal !== false;
+          const activo = !!material.activo;
+
+          const stockEnOrigen = Array.isArray(material.stocks)
+            ? material.stocks
+                .filter(
+                  (stock: any) =>
+                    stock.activo &&
+                    Number(stock.sitioId) === Number(sitioOrigenId) &&
+                    Number(stock.cantidad) > 0
+                )
+                .reduce(
+                  (acc: number, s: any) => acc + Number(s.cantidad || 0),
+                  0
+                )
+            : 0;
+
+          return esOriginal && activo && stockEnOrigen > 0;
+        });
+      }
+
+      return materiales.filter((material) => {
+        const esOriginal = material.esOriginal !== false;
+        const activo = !!material.activo;
+        const tieneStockActivoEnAlgunaParte =
+          Array.isArray(material.stocks) &&
+          material.stocks.some(
+            (stock: any) => stock.activo && Number(stock.cantidad) > 0
+          );
+        return esOriginal && activo && tieneStockActivoEnAlgunaParte;
+      });
+    }
+    return materiales;
+  };
+
+  const getStockDisponibleEnSitio = async (
+    materialId: number,
+    sitioId: number
+  ) => {
+    try {
+      const sitioIdNum = Number(sitioId);
+      const res = await materialService.getById(materialId);
+      const material: any = res?.data ?? null;
+      const stocks: Array<{
+        sitioId?: number | string;
+        activo: boolean;
+        cantidad: number;
+        id?: number | string;
+        codigo?: string;
+      }> = material?.stocks ?? [];
+
+      const resumen = stocks.map((s) => {
+        const efectivoSitioId = Number(s.sitioId ?? material?.sitioId ?? -1);
+        return {
+          id: s.id,
+          codigo: s.codigo,
+          activo: !!s.activo,
+          sitioId: efectivoSitioId,
+          cantidad: Number(s.cantidad) || 0,
+        };
+      });
+      const porSitio = resumen.reduce(
+        (acc, s) => {
+          acc[s.sitioId] = (acc[s.sitioId] || 0) + s.cantidad;
+          return acc;
+        },
+        {} as Record<number, number>
+      );
+
+      console.log("[DEBUG] getStockDisponibleEnSitio()", {
+        materialId,
+        sitioIdParam: sitioId,
+        sitioIdNum,
+        resumen,
+        porSitio,
+      });
+
+      const disponible = resumen
+        .filter((s) => s.activo && s.sitioId === sitioIdNum)
+        .reduce((sum, s) => sum + s.cantidad, 0);
+
+      console.log("[DEBUG] disponible calculado", {
+        materialId,
+        sitioIdNum,
+        disponible,
+      });
+      return disponible;
+    } catch (e) {
+      console.warn("[WARN] getStockDisponibleEnSitio() error", {
+        materialId,
+        sitioId,
+        error: e,
+      });
+      return 0;
+    }
+  };
+
+  const getTipoMovimientoId = () => {
+    if (tipoMovimientoSeleccionado === "peticion") {
+      const tipoSalida = tiposMovimiento.find(
+        (tipo) =>
+          tipo.nombre.toLowerCase().includes("salida") ||
+          tipo.nombre.toLowerCase().includes("peticion")
+      );
+      return tipoSalida?.id;
+    } else if (tipoMovimientoSeleccionado === "devolver") {
+      const tipoDevolucion = tiposMovimiento.find(
+        (tipo) =>
+          tipo.nombre.toLowerCase().includes("devolucion") ||
+          tipo.nombre.toLowerCase().includes("devolución") ||
+          tipo.nombre.toLowerCase().includes("entrada")
+      );
+      return tipoDevolucion?.id;
+    } else if (tipoMovimientoSeleccionado === "prestamo") {
+      const tipoPrestamo = tiposMovimiento.find(
+        (tipo) =>
+          tipo.nombre.toLowerCase().includes("prestamo") ||
+          tipo.nombre.toLowerCase().includes("préstamo")
+      );
+      return tipoPrestamo?.id;
+    }
+    return undefined;
+  };
+
+  // Manejo de detalles múltiples
+  const agregarDetalle = () => {
+    setDetallesMovimiento([
+      ...detallesMovimiento,
+      { materialId: 0, cantidad: 1 },
+    ]);
+  };
+
+  const removerDetalle = (index: number) => {
+    if (detallesMovimiento.length > 1) {
+      setDetallesMovimiento(detallesMovimiento.filter((_, i) => i !== index));
+    }
+  };
+
+  const actualizarDetalle = (
+    index: number,
+    campo: keyof DetalleMovimiento,
+    valor: any
+  ) => {
+    const nuevosDetalles = [...detallesMovimiento];
+    nuevosDetalles[index] = { ...nuevosDetalles[index], [campo]: valor };
+    setDetallesMovimiento(nuevosDetalles);
+  };
+
+  const handleChangeSitioOrigen = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const valueNum = Number(e.target.value);
+    console.log(
+      "[DEBUG] Cambio sitio origen (raw, num):",
+      e.target.value,
+      valueNum
+    );
+    setSitioOrigenId(Number.isNaN(valueNum) ? null : valueNum);
+  };
+
+  const obtenerPrestamosActivos = async (materialId: number) => {
+    try {
+      const prestamos = await getPrestamosActivos(materialId);
+      setPrestamosActivos(prestamos || []);
+      setMaterialParaDevolucion(materialId);
+      setIsSeleccionPrestamoModalOpen(true);
+    } catch (error) {
+      console.error("Error al obtener préstamos activos:", error);
+      addToast({
+        title: "Error",
+        description: "No se pudieron cargar los préstamos activos",
+        color: "danger",
+      });
+    }
+  };
+
+  const seleccionarPrestamo = (prestamo: any) => {
+    setPrestamoSeleccionado(prestamo);
+    setIsSeleccionPrestamoModalOpen(false);
+
+    if (!materialParaDevolucion) return;
+
+    const nuevoDetalle = {
+      materialId: materialParaDevolucion,
+      cantidad: Math.min(1, prestamo?.saldoPendiente || 1),
+      material: materiales.find((m) => m.id === materialParaDevolucion),
+    };
+
+    setDetallesMovimiento([nuevoDetalle]);
+
+    addToast({
+      title: "Préstamo seleccionado",
+      description: `Préstamo del ${new Date(prestamo.fechaCreacion).toLocaleDateString()} seleccionado para devolución`,
+      color: "success",
+    });
+  };
+
+  const handleVerDetalles = async (movimiento: Movimiento) => {
+    setSelectedMovimiento(movimiento);
+    try {
+      await fetchDetallesPorMovimiento(movimiento.id);
+      setIsDetallesModalOpen(true);
+    } catch (error) {
+      addToast({
+        title: "Error",
+        description: "No se pudieron cargar los detalles del movimiento",
+        color: "danger",
+      });
+    }
+  };
+
+  const handleAprobarMovimiento = async (movimientoId: number) => {
+    try {
+      // Preferir el id de la persona autenticada; evitar fallback 1
+      const aprobadorIdRaw =
+        (user as any)?.persona?.id ?? (user as any)?.usuario?.id ?? null;
+
+      if (aprobadorIdRaw == null) {
+        addToast({
+          title: "Error",
+          description: "No se encontró el ID del aprobador en la sesión",
+          color: "danger",
+        });
+        return;
+      }
+
+      const aprobadorId = Number(aprobadorIdRaw);
+      if (Number.isNaN(aprobadorId)) {
+        addToast({
+          title: "Error",
+          description: "ID de aprobador inválido",
+          color: "danger",
+        });
+        return;
+      }
+
+      const movimiento = movimientos.find((m) => m.id === movimientoId);
+      console.log("[DEBUG] handleAprobarMovimiento()", {
+        movimientoId,
+        movimiento,
+      });
+
+      await aprobarMovimiento(movimientoId, aprobadorId);
+      await fetchMovimientos();
+      await fetchMyMaterials();
+
+      addToast({
+        title: "Movimiento aprobado",
+        description: "El movimiento ha sido aprobado exitosamente",
+        color: "success",
+      });
+    } catch (error: any) {
+      const serverMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "No se pudo aprobar el movimiento";
+
+      console.error("Error al aprobar movimiento:", error);
+      addToast({
+        title: "Error",
+        description: serverMessage,
+        color: "danger",
+      });
+    }
+  };
+
+  const handleRechazarMovimiento = async (movimientoId: number) => {
+    try {
+      const rechazadoPorId = user?.usuario?.id || 1;
+      await rechazarMovimiento(movimientoId, rechazadoPorId);
+      await fetchMovimientos();
+
+      addToast({
+        title: "Movimiento rechazado",
+        description: "El movimiento ha sido rechazado",
+        color: "warning",
+      });
+    } catch (error) {
+      addToast({
+        title: "Error",
+        description: "No se pudo rechazar el movimiento",
+        color: "danger",
+      });
+    }
+  };
+
+  const handleTipoMovimientoSelect = async (
+    tipo: TipoMovimientoSeleccionado
+  ) => {
+    setTipoMovimientoSeleccionado(tipo);
+
+    // Cargar materiales específicos según el tipo
+    if (tipo === "devolver") {
+      // Antes: await fetchMaterialesPrestadosPendientes();
+      await fetchMyMaterials();
+      await actualizarMaterialesConPrestamoActivo();
+    } else {
+      await fetchMyMaterials();
+    }
+
+    // Resetear formulario
+    setDetallesMovimiento([{ materialId: 0, cantidad: 1 }]);
+    setSitioOrigenId(null);
+    setSitioDestinoId(null);
+    setObservaciones("");
+    setSolicitanteId(isAdmin ? null : user?.usuario?.id || null);
+
+    setIsFormOpen(true);
+  };
+
+  // Dentro del componente MovimientoPage
+  const handleSubmit = async () => {
+    try {
+      const tipoMovimientoId = getTipoMovimientoId();
+      const personaSolicitaId = isAdmin ? solicitanteId : user?.usuario?.id;
+
+      if (!personaSolicitaId || !tipoMovimientoId) {
+        throw new Error("Faltan campos requeridos");
+      }
+
+      const detallesValidos = detallesMovimiento.filter(
+        (d) => d.materialId > 0 && d.cantidad > 0
+      );
+      if (detallesValidos.length === 0) {
+        throw new Error("Debe agregar al menos un material");
+      }
+
+      if (tipoMovimientoSeleccionado === "devolver") {
+        if (!prestamoSeleccionado) {
+          throw new Error(
+            "Debe seleccionar un préstamo activo para realizar la devolución"
+          );
+        }
+
+        await devolverMaterial(prestamoSeleccionado.id, {
+          personaSolicitaId,
+          detalles: detallesValidos.map((d) => ({
+            materialId: d.materialId,
+            cantidad: d.cantidad,
+          })),
+        });
+      } else {
+        if (!sitioOrigenId) {
+          throw new Error("Debe seleccionar un sitio de origen");
+        }
+
+        // Validar stock disponible por cada material antes de crear
+        for (const d of detallesValidos) {
+          const disponible = await getStockDisponibleEnSitio(
+            d.materialId,
+            sitioOrigenId
+          );
+          if (disponible < d.cantidad) {
+            throw new Error(
+              `Stock insuficiente para el material seleccionado (solicitado: ${d.cantidad}, disponible: ${disponible})`
+            );
+          }
+        }
+
+        const dto: CreateMovimientoDto = {
+          personaSolicitaId,
+          sitioOrigenId,
+          sitioDestinoId: sitioDestinoId || undefined,
+          tipoMovimientoId,
+          detalles: detallesValidos.map((d) => ({
+            materialId: d.materialId,
+            cantidad: d.cantidad,
+          })),
+        };
+
+        await createMovimiento(dto);
+      }
+
+      await fetchMovimientos();
+      await fetchMyMaterials();
+      setIsFormOpen(false);
+
+      addToast({
+        title: "Movimiento creado",
+        description: "El movimiento ha sido creado exitosamente",
+        color: "success",
+      });
+    } catch (error: any) {
+      addToast({
+        title: "Error",
+        description: error?.message || "No se pudo crear el movimiento",
+        color: "danger",
+      });
+    }
+  };
+
+  // Columnas de la tabla
+  // Definición de columnas: corregir accessorKey de solicitante
   const columns: Column<Movimiento>[] = [
     {
-      accessorKey: 'id',
-      header: 'ID',
+      accessorKey: "id",
+      header: "ID",
       sortable: true,
-      width: '80px'
+      width: "80px",
     },
     {
-      accessorKey: 'tipoMovimiento',
-      header: 'Tipo',
+      accessorKey: "tipoMovimiento",
+      header: "Tipo",
       sortable: true,
       cell: (row: Movimiento) => (
         <div className="flex items-center gap-2">
-          {row.tipoMovimiento?.nombre?.toLowerCase().includes('entrada') ? 
-            <ArrowUp className="h-4 w-4 text-green-500" /> : 
-            <ArrowDown className="h-4 w-4 text-red-500" />
-          }
-          <span className="font-medium">{row.tipoMovimiento?.nombre || 'Sin tipo'}</span>
+          {row.tipoMovimiento?.nombre?.toLowerCase().includes("entrada") ||
+          row.tipoMovimiento?.nombre?.toLowerCase().includes("devolucion") ? (
+            <ArrowDown className="h-4 w-4 text-green-600" />
+          ) : (
+            <ArrowUp className="h-4 w-4 text-red-600" />
+          )}
+          <span className="font-medium">
+            {row.tipoMovimiento?.nombre || "Sin tipo"}
+          </span>
         </div>
-      )
+      ),
     },
     {
-      accessorKey: 'material',
-      header: 'Material',
+      accessorKey: "detalles",
+      header: "Materiales",
+      sortable: false,
+      cell: (row: Movimiento) => (
+        <div className="text-sm">
+          {row.detalles && row.detalles.length > 0 ? (
+            <span className="text-blue-600 font-medium">
+              {row.detalles.length} material
+              {row.detalles.length > 1 ? "es" : ""}
+            </span>
+          ) : (
+            <span className="text-gray-500">Sin detalles</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "sitioDestino",
+      header: "Sitio Destino",
+      sortable: false,
+      cell: (row: Movimiento) => row.sitioDestino?.nombre || "Sin sitio",
+    },
+    {
+      accessorKey: "personaSolicita",
+      header: "Solicitante",
       sortable: true,
       cell: (row: Movimiento) => (
         <span className="text-sm text-gray-600">
-          {row.material?.nombre || 'Sin material'}
+          {row.personaSolicita
+            ? `${row.personaSolicita.nombre} ${row.personaSolicita.apellido || ""}`
+            : "Sin solicitante"}
         </span>
-      )
+      ),
     },
     {
-      accessorKey: 'cantidad',
-      header: 'Cantidad',
+      accessorKey: "estado",
+      header: "Estado",
       sortable: true,
-      cell: (row: Movimiento) => (
-        <span className="font-semibold text-blue-600">
-          {row.cantidad}
-        </span>
-      )
+      cell: (row: Movimiento) => {
+        const getEstadoColor = (estado: string) => {
+          switch (estado) {
+            case "aprobado":
+              return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+            case "rechazado":
+              return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+            default:
+              return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+          }
+        };
+        return (
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(row.estado)}`}
+          >
+            {row.estado.toUpperCase()}
+          </span>
+        );
+      },
     },
     {
-      accessorKey: 'persona',
-      header: 'Persona',
-      sortable: true,
-      cell: (row: Movimiento) => (
-        <span className="text-sm text-gray-600">
-          {row.persona ? `${row.persona.nombre} ${row.persona.apellido || ''}` : 'Sin asignar'}
-        </span>
-      )
-    },
-    {
-      accessorKey: 'solicitud',
-      header: 'Solicitud',
-      sortable: true,
-      cell: (row: Movimiento) => (
-        <span className="text-sm text-gray-600">
-          {row.solicitud?.descripcion || 'Sin solicitud'}
-        </span>
-      )
-    },
-    {
-      accessorKey: 'activo',
-      header: 'Estado',
-      sortable: true,
-      cell: (row: Movimiento) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
-        </span>
-      )
-    },
-    {
-      accessorKey: 'fechaCreacion',
-      header: 'Fecha Creación',
+      accessorKey: "fechaCreacion",
+      header: "Fecha Creación",
       sortable: true,
       isDate: true,
-      width: '150px'
-    }
+      width: "150px",
+    },
   ];
-
-  const formFields: FieldDefinition<Movimiento>[] = [
-    {
-      name: 'tipoMovimientoId',
-      label: 'Tipo de Movimiento',
-      type: 'select',
-      required: true,
-      options: tiposMovimiento.map(tipo => ({
-        value: tipo.id,
-        label: tipo.nombre
-      }))
-    },
-    {
-      name: 'materialId',
-      label: 'Material',
-      type: 'select',
-      required: true,
-      options: materiales.map(material => ({
-        value: material.id,
-        label: material.nombre
-      }))
-    },
-    {
-      name: 'cantidad',
-      label: 'Cantidad',
-      type: 'number',
-      required: true
-    },
-    {
-      name: 'personaId',
-      label: 'Persona',
-      type: 'select',
-      options: personas.map(persona => ({
-        value: persona.id,
-        label: `${persona.nombre} ${persona.apellido || ''}`
-      }))
-    },
-    {
-      name: 'activo',
-      label: 'Activo',
-      type: 'checkbox'
-    }
-  ];
-
-  const handleCreate = () => {
-    setEditingMovimiento(null);
-    setIsFormOpen(true);
-  };
-
-  const handleEdit = (movimiento: Movimiento) => {
-    setEditingMovimiento(movimiento);
-    setIsFormOpen(true);
-  };
-
-  const handleDelete = async (movimiento: Movimiento) => {
-    try {
-      await deleteMovimiento(movimiento.id);
-      addToast({
-        title: 'Movimiento eliminado',
-        description: `El movimiento ha sido eliminado exitosamente.`,
-        color: 'success'
-      });
-    } catch (error) {
-      addToast({
-        title: 'Error al eliminar',
-        description: error instanceof Error ? error.message : 'Error desconocido',
-        color: 'danger'
-      });
-    }
-  };
-
-  const handleSubmit = async (data: Partial<Movimiento>) => {
-    try {
-      if (editingMovimiento) {
-        // Actualizar movimiento existente
-        await updateMovimiento(editingMovimiento.id, data);
-        addToast({
-          title: 'Movimiento actualizado',
-          description: `El movimiento ha sido actualizado exitosamente.`,
-          color: 'success'
-        });
-      } else {
-        await createMovimiento(data);
-        addToast({
-          title: 'Movimiento creado',
-          description: `El movimiento ha sido creado exitosamente.`,
-          color: 'success'
-        });
-      }
-      setIsFormOpen(false);
-      setEditingMovimiento(null);
-    } catch (error) {
-      addToast({
-        title: editingMovimiento ? 'Error al actualizar' : 'Error al crear',
-        description: error instanceof Error ? error.message : 'Error desconocido',
-        color: 'danger'
-      });
-    }
-  };
-
-  const handleCancel = () => {
-    setIsFormOpen(false);
-    setEditingMovimiento(null);
-  };
 
   const actions = [
     {
-      icon: <Edit className="h-4 w-4" />,
-      label: 'Editar',
-      onClick: handleEdit,
-      color: 'primary' as const
+      label: "Ver Detalles",
+      onClick: (movimiento: Movimiento) => {
+        void handleVerDetalles(movimiento);
+      },
+      variant: "primary" as const,
+      icon: <Eye className="h-4 w-4" />,
+      show: () => true,
     },
     {
-      icon: <Trash2 className="h-4 w-4" />,
-      label: 'Eliminar',
-      onClick: handleDelete,
-      color: 'danger' as const
-    }
+      label: "Aprobar",
+      onClick: (movimiento: Movimiento) => {
+        void handleAprobarMovimiento(movimiento.id);
+      },
+      variant: "primary" as const,
+      icon: <CheckCircle className="h-4 w-4" />,
+      show: (movimiento: Movimiento) =>
+        movimiento.estado === "pendiente" && isAdmin,
+    },
+    {
+      label: "Rechazar",
+      onClick: (movimiento: Movimiento) => {
+        void handleRechazarMovimiento(movimiento.id);
+      },
+      variant: "danger" as const,
+      icon: <XCircle className="h-4 w-4" />,
+      show: (movimiento: Movimiento) =>
+        movimiento.estado === "pendiente" && isAdmin,
+    },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg text-gray-600 dark:text-gray-400">Cargando movimientos...</div>
-      </div>
-    );
-  }
+  // Effects
+  useEffect(() => {
+    fetchMovimientos();
+    fetchTiposMovimiento();
+    fetchPersonas();
+    fetchMyMaterials();
+  }, []);
 
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg text-red-600 dark:text-red-400">Error: {error}</div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (tipoMovimientoSeleccionado === "devolver") {
+      void actualizarMaterialesConPrestamoActivo();
+    }
+  }, [tipoMovimientoSeleccionado, solicitanteId, materiales]);
+
+  // Filtrar movimientos
+  const movimientosFiltrados = mostrarSoloPendientes
+    ? movimientos.filter((m) => m.estado === "pendiente")
+    : movimientos;
 
   return (
-   <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Gestión de Movimientos
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Administra los movimientos de los materiales del sistema
+          <p className="text-gray-600 dark:text-gray-400">
+            Administra peticiones, préstamos y devoluciones de materiales
           </p>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            color={mostrarSoloPendientes ? "primary" : "default"}
+            variant={mostrarSoloPendientes ? "solid" : "bordered"}
+            onPress={() => setMostrarSoloPendientes(!mostrarSoloPendientes)}
+            startContent={<Clock className="h-4 w-4" />}
+          >
+            {mostrarSoloPendientes ? "Mostrar Todos" : "Solo Pendientes"}
+          </Button>
         </div>
       </div>
 
-      <DataTable
-        data={movimientos}
-        columns={columns}
-        actions={actions}
-        onCreate={handleCreate}
-        getRowId={(movimiento) => movimiento.id}
-        title="Lista de Movimientos"
-        searchPlaceholder="Buscar movimientos..."
-        emptyMessage="No se encontraron movimientos"
-        createButtonLabel="Nuevo Movimiento"
-        className="bg-white dark:bg-gray-800 rounded-lg shadow"
-      />
+      {/* Botones de acción */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          isPressable
+          onPress={() => handleTipoMovimientoSelect("peticion")}
+        >
+          <CardBody className="flex flex-row items-center gap-4 p-6">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <ShoppingCart className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Nueva Petición</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Solicitar materiales del inventario
+              </p>
+            </div>
+          </CardBody>
+        </Card>
 
-      {isFormOpen && (
-        <GenericForm
-          fields={formFields}
-          initialValues={editingMovimiento || { cantidad: 0, activo: true }}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-        />
-      )}
+        <Card
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          isPressable
+          onPress={() => handleTipoMovimientoSelect("prestamo")}
+        >
+          <CardBody className="flex flex-row items-center gap-4 p-6">
+            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
+              <HandHeart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Nuevo Préstamo</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Prestar materiales temporalmente
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          isPressable
+          onPress={() => handleTipoMovimientoSelect("devolver")}
+        >
+          <CardBody className="flex flex-row items-center gap-4 p-6">
+            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+              <Undo2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Devolución</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Devolver materiales prestados
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      <Card>
+        <CardBody>
+          <DataTable
+            data={movimientosFiltrados}
+            columns={columns}
+            actions={actions}
+            getRowId={(row: Movimiento) => row.id} // ✅ requerido por DataTable
+            showSearch
+            showColumnSelector
+            pageSize={15}
+          />
+        </CardBody>
+      </Card>
+
+      {/* Modal de formulario */}
+      <Modal
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        size="2xl"
+        scrollBehavior="inside"
+        classNames={{
+          base: "bg-black/60 backdrop-blur-sm",
+          wrapper: "animate-in fade-in duration-200",
+        }}
+      >
+        {/* Overlay con animación */}
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          {/* Modal principal con animación y ancho dinámico */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden w-full max-w-4xl mx-4 animate-in slide-in-from-bottom-4 duration-300 border border-gray-200 dark:border-gray-700">
+            {/* Header del formulario con gradiente verde */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Type size={20} className="text-white" />
+                </div>
+                <h2 className="text-xl font-semibold text-white">
+                  {tipoMovimientoSeleccionado === "peticion" && "Nueva Petición"}
+                  {tipoMovimientoSeleccionado === "prestamo" && "Nuevo Préstamo"}
+                  {tipoMovimientoSeleccionado === "devolver" && "Nueva Devolución"}
+                </h2>
+              </div>
+              <Button
+                type="button"
+                variant="light"
+                size="sm"
+                className="text-white hover:bg-white/20 transition-colors duration-200"
+                onClick={() => setIsFormOpen(false)}
+              >
+                <X size={20} />
+              </Button>
+            </div>
+
+            {/* Contenido del formulario */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-6">
+                {/* Grid dinámico basado en el número de campos */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Sitios (solo para peticiones y préstamos) */}
+                  {(tipoMovimientoSeleccionado === "peticion" ||
+                    tipoMovimientoSeleccionado === "prestamo") && (
+                    <>
+                      <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                        {/* Label con icono */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Type size={16} className="text-gray-400" />
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                            Sitio Origen
+                            <span className="text-red-500 text-xs">*</span>
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <select
+                            className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                            value={sitioOrigenId || ""}
+                            onChange={handleChangeSitioOrigen}
+                            required
+                          >
+                            <option value="" className="text-gray-500">
+                              Seleccione un sitio origen...
+                            </option>
+                            {sitios.map((sitio) => (
+                              <option key={sitio.id} value={sitio.id}>
+                                {sitio.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                        {/* Label con icono */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Type size={16} className="text-gray-400" />
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                            Sitio Destino
+                            <span className="text-red-500 text-xs">*</span>
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <select
+                            className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                            value={sitioDestinoId || ""}
+                            onChange={(e) =>
+                              setSitioDestinoId(Number(e.target.value) || null)
+                            }
+                            required
+                          >
+                            <option value="" className="text-gray-500">
+                              Seleccione un sitio destino...
+                            </option>
+                            {sitios.map((sitio) => (
+                              <option key={sitio.id} value={sitio.id}>
+                                {sitio.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Solicitante (solo para admin) */}
+                  {isAdmin && (
+                    <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                      {/* Label con icono */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <Type size={16} className="text-gray-400" />
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                          {tipoMovimientoSeleccionado === "peticion" &&
+                            "Solicitante"}
+                          {tipoMovimientoSeleccionado === "prestamo" &&
+                            "Persona que recibe"}
+                          {tipoMovimientoSeleccionado === "devolver" &&
+                            "Persona que devuelve"}
+                          <span className="text-red-500 text-xs">*</span>
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <select
+                          className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                          value={solicitanteId || ""}
+                          onChange={(e) =>
+                            setSolicitanteId(Number(e.target.value) || null)
+                          }
+                          required
+                        >
+                          <option value="" className="text-gray-500">
+                            Seleccione una persona...
+                          </option>
+                          {personas.map((persona) => (
+                            <option key={persona.id} value={persona.id}>
+                              {persona.nombre} {persona.apellido}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Detalles de materiales */}
+                <div className="group transition-all duration-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Type size={16} className="text-gray-400" />
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                        Materiales
+                        <span className="text-red-500 text-xs">*</span>
+                      </label>
+                    </div>
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="bordered"
+                      className="px-4 text-green-600 hover:text-green-700 border-2 border-green-200 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-200"
+                      onClick={agregarDetalle}
+                      isDisabled={tipoMovimientoSeleccionado === "devolver"}
+                    >
+                      <Plus size={18} />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {detallesMovimiento.map((detalle, index) => (
+                      <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
+                        <div className="flex gap-4 items-end">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Type size={14} className="text-gray-400" />
+                              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                Material
+                              </label>
+                            </div>
+                            <select
+                              className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500 text-sm"
+                              value={detalle.materialId}
+                              onChange={(e) => {
+                                const value = Number(e.target.value);
+                                actualizarDetalle(index, "materialId", value);
+                                if (
+                                  tipoMovimientoSeleccionado === "devolver" &&
+                                  value > 0
+                                ) {
+                                  void obtenerPrestamosActivos(value);
+                                }
+                              }}
+                              required
+                            >
+                              <option value={0} className="text-gray-500">
+                                Seleccionar material...
+                              </option>
+                              {getMaterialesFiltrados().map((material) => (
+                                <option key={material.id} value={material.id}>
+                                  {crearEtiquetaMaterial(material)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="w-24">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Hash size={14} className="text-gray-400" />
+                              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                Cantidad
+                              </label>
+                            </div>
+                            <input
+                              type="number"
+                              min={1}
+                              max={
+                                tipoMovimientoSeleccionado === "devolver"
+                                  ? Math.max(1, prestamoSeleccionado?.saldoPendiente || 1)
+                                  : undefined
+                              }
+                              className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500 text-sm"
+                              value={detalle.cantidad}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                let nuevo = val;
+                                if (Number.isNaN(nuevo) || nuevo < 1) nuevo = 1;
+                                if (tipoMovimientoSeleccionado === "devolver") {
+                                  const max = Math.max(
+                                    1,
+                                    prestamoSeleccionado?.saldoPendiente || 1
+                                  );
+                                  if (nuevo > max) nuevo = max;
+                                }
+                                actualizarDetalle(index, "cantidad", nuevo);
+                              }}
+                              required
+                              disabled={
+                                tipoMovimientoSeleccionado === "devolver" &&
+                                !prestamoSeleccionado
+                              }
+                            />
+                          </div>
+
+                          {detallesMovimiento.length > 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="light"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 p-2"
+                              onClick={() => removerDetalle(index)}
+                            >
+                              <Minus size={16} />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Observaciones (solo para peticiones y préstamos) */}
+                {tipoMovimientoSeleccionado !== "devolver" && (
+                  <div className="group transition-all duration-200 hover:transform hover:scale-[1.02]">
+                    {/* Label con icono */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Type size={16} className="text-gray-400" />
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Observaciones
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <textarea
+                        className="w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-500"
+                        rows={3}
+                        value={observaciones}
+                        onChange={(e) => setObservaciones(e.target.value)}
+                        placeholder="Ingrese observaciones adicionales..."
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer con botones */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                type="button"
+                variant="bordered"
+                size="lg"
+                className="px-6 text-gray-600 hover:text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                onClick={() => setIsFormOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                size="lg"
+                className="px-6 bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                onClick={handleSubmit}
+                isLoading={loading}
+              >
+                <Save size={18} className="mr-2" />
+                {tipoMovimientoSeleccionado === "peticion" && "Crear Petición"}
+                {tipoMovimientoSeleccionado === "prestamo" && "Crear Préstamo"}
+                {tipoMovimientoSeleccionado === "devolver" && "Crear Devolución"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de detalles */}
+      <Modal
+        isOpen={isDetallesModalOpen}
+        onClose={() => setIsDetallesModalOpen(false)}
+        size="3xl"
+      >
+        <ModalContent className="rounded-lg overflow-hidden">
+          <ModalHeader className="bg-emerald-600 text-white">
+            <h2 className="text-xl font-bold">
+              Detalles del Movimiento #{selectedMovimiento?.id}
+            </h2>
+          </ModalHeader>
+          <ModalBody>
+            {selectedMovimiento && (
+              <div className="space-y-6">
+                {/* Información general */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Información General</h3>
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <strong>Tipo:</strong>{" "}
+                        {selectedMovimiento.tipoMovimiento?.nombre}
+                      </p>
+                      <p>
+                        <strong>Estado:</strong>
+                        <span
+                          className={`ml-2 px-2 py-1 rounded text-xs ${
+                            selectedMovimiento.estado === "aprobado"
+                              ? "bg-green-100 text-green-800"
+                              : selectedMovimiento.estado === "rechazado"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {selectedMovimiento.estado.toUpperCase()}
+                        </span>
+                      </p>
+                      <p>
+                        <strong>Fecha:</strong>{" "}
+                        {new Date(
+                          selectedMovimiento.fechaCreacion
+                        ).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-2">Personas</h3>
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <strong>Solicitante:</strong>{" "}
+                        {selectedMovimiento.personaSolicita?.nombre}{" "}
+                        {selectedMovimiento.personaSolicita?.apellido}
+                      </p>
+                      {selectedMovimiento.personaAprueba && (
+                        <p>
+                          <strong>Aprobado por:</strong>{" "}
+                          {selectedMovimiento.personaAprueba.nombre}{" "}
+                          {selectedMovimiento.personaAprueba.apellido}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sitios */}
+                <div>
+                  <h3 className="font-semibold mb-2">Sitios</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    {selectedMovimiento.sitioOrigen && (
+                      <p>
+                        <strong>Origen:</strong>{" "}
+                        {selectedMovimiento.sitioOrigen.nombre}
+                      </p>
+                    )}
+                    {selectedMovimiento.sitioDestino && (
+                      <p>
+                        <strong>Destino:</strong>{" "}
+                        {selectedMovimiento.sitioDestino.nombre}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detalles de materiales */}
+                <div>
+                  <h3 className="font-semibold mb-2">Materiales</h3>
+                  {detallesLoading ? (
+                    <p>Cargando detalles...</p>
+                  ) : detalles && detalles.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Material</th>
+                            <th className="text-left p-2">Cantidad</th>
+                            <th className="text-left p-2">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detalles.map((detalle) => (
+                            <tr key={detalle.id} className="border-b">
+                              <td className="p-2">
+                                {detalle.material?.nombre ||
+                                  "Material no encontrado"}
+                              </td>
+                              <td className="p-2">{detalle.cantidad}</td>
+                              <td className="p-2">
+                                <span
+                                  className={`px-2 py-1 rounded text-xs ${
+                                    detalle.estado === "aprobado"
+                                      ? "bg-green-100 text-green-800"
+                                      : detalle.estado === "rechazado"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                  }`}
+                                >
+                                  {detalle.estado}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">No hay detalles disponibles</p>
+                  )}
+                </div>
+
+                {/* Observaciones */}
+                {selectedMovimiento.observaciones && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Observaciones</h3>
+                    <p className="text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      {selectedMovimiento.observaciones}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              color="primary"
+              onPress={() => setIsDetallesModalOpen(false)}
+            >
+              Cerrar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal de selección de préstamo activo */}
+      <Modal
+        isOpen={isSeleccionPrestamoModalOpen}
+        onClose={() => setIsSeleccionPrestamoModalOpen(false)}
+        size="lg"
+        scrollBehavior="inside"
+      >
+        <ModalContent className="rounded-lg overflow-hidden">
+          <ModalHeader className="bg-emerald-600 text-white">
+            <h2 className="text-xl font-bold">Seleccionar Préstamo Activo</h2>
+          </ModalHeader>
+          <ModalBody>
+            {!materialParaDevolucion && (
+              <p className="text-sm text-gray-500">
+                Seleccione un material para ver sus préstamos activos.
+              </p>
+            )}
+
+            {materialParaDevolucion && prestamosActivos.length === 0 && (
+              <p className="text-sm text-gray-500">
+                No hay préstamos activos para el material seleccionado.
+              </p>
+            )}
+
+            {prestamosActivos.length > 0 && (
+              <div className="space-y-2">
+                {prestamosActivos.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="text-sm">
+                      <p className="font-medium">
+                        Movimiento #{p.id} —{" "}
+                        {new Date(p.fechaCreacion).toLocaleString()}
+                      </p>
+                      <p className="text-gray-600">
+                        Saldo pendiente: {p.saldoPendiente}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-700 hover:to-emerald-600"
+                      onPress={() => seleccionarPrestamo(p)}
+                    >
+                      Seleccionar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter className="border-t border-gray-200 dark:border-gray-700">
+            <Button
+              variant="light"
+              onPress={() => setIsSeleccionPrestamoModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
-};
+}
 
 export default MovimientoPage;

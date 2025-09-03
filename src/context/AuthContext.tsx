@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const userData = await authService.login({ email, password });
       setUser(userData);
-      // No necesitamos retornar nada aquí, ya que el estado se actualiza con setUser
+
     } catch (error) {
       console.error("Error durante el login:", error);
       throw error;
@@ -74,3 +74,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+
+

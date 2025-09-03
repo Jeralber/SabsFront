@@ -1,10 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { useMemo } from 'react';
 
-interface ModulePermission {
-  module: string;
-  permissions: string[];
-}
 
 interface UserPermissions {
   canAccess: (module: string) => boolean;

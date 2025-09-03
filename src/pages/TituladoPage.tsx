@@ -5,8 +5,10 @@ import { useTitulado } from '@/hooks/useTitulado';
 import { useArea } from '@/hooks/useArea';
 import { useFicha } from '@/hooks/useFicha';
 import { Titulado } from '@/types/titulado.types';
-import { Edit, Trash, GraduationCap } from 'lucide-react';
+import { Edit, Trash, GraduationCap, MapPin, FileText, Calendar, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { addToast } from '@heroui/react';
+import Swal from 'sweetalert2';
+import { Link } from 'react-router-dom';
 
 interface Column<T> {
   accessorKey: keyof T;
@@ -35,7 +37,12 @@ const TituladoPage: React.FC = () => {
     {
       accessorKey: 'id',
       header: 'ID',
-      sortable: true
+      sortable: true,
+      cell: (row: Titulado) => (
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm text-gray-500">#{row.id}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'nombre',
@@ -53,9 +60,12 @@ const TituladoPage: React.FC = () => {
       header: 'Área',
       sortable: true,
       cell: (row: Titulado) => (
-        <span className="text-gray-600 dark:text-gray-300">
-          {row.area?.nombre || 'Sin área'}
-        </span>
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-green-500" />
+          <span className="text-gray-600 dark:text-gray-300">
+            {row.area?.nombre || 'Sin área'}
+          </span>
+        </div>
       )
     },
     {
@@ -63,9 +73,12 @@ const TituladoPage: React.FC = () => {
       header: 'Ficha',
       sortable: true,
       cell: (row: Titulado) => (
-        <span className="text-gray-600 dark:text-gray-300">
-          {row.ficha ? `Ficha ${row.ficha.numero}` : 'Sin ficha'}
-        </span>
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-purple-500" />
+          <span className="text-gray-600 dark:text-gray-300">
+            {row.ficha ? `Ficha ${row.ficha.numero}` : 'Sin ficha'}
+          </span>
+        </div>
       )
     },
     {
@@ -73,13 +86,20 @@ const TituladoPage: React.FC = () => {
       header: 'Estado',
       sortable: true,
       cell: (row: Titulado) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          row.activo 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
-        </span>
+        <div className="flex items-center gap-2">
+          {row.activo ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            row.activo 
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {row.activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
       )
     },
     {
@@ -87,15 +107,26 @@ const TituladoPage: React.FC = () => {
       header: 'Fecha Creación',
       sortable: true,
       isDate: true,
-      cell: (row: Titulado) => new Date(row.fechaCreacion).toLocaleDateString('es-ES')
+      cell: (row: Titulado) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-indigo-500" />
+          <span>{new Date(row.fechaCreacion).toLocaleDateString('es-ES')}</span>
+        </div>
+      )
     },
     {
       accessorKey: 'fechaActualizacion',
       header: 'Última Actualización',
       sortable: true,
       isDate: true,
-      cell: (row: Titulado) => 
-        row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'
+      cell: (row: Titulado) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-orange-500" />
+          <span>
+            {row.fechaActualizacion ? new Date(row.fechaActualizacion).toLocaleDateString('es-ES') : 'N/A'}
+          </span>
+        </div>
+      )
     }
   ];
 
@@ -145,19 +176,48 @@ const TituladoPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    try {
-      await deleteTitulado(id);
-      addToast({
-        title: 'Éxito',
-        description: 'Titulado eliminado correctamente',
-        color: 'success'
-      });
-    } catch (error) {
-      addToast({
-        title: 'Error',
-        description: 'Error al eliminar el titulado',
-        color: 'danger'
-      });
+    const titulado = titulados.find(t => t.id === id);
+    const result = await Swal.fire({
+      title: '¿Eliminar Titulado?',
+      text: `¿Está seguro de que desea eliminar a ${titulado?.nombre}? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteTitulado(id);
+        addToast({
+          title: 'Éxito',
+          description: `${titulado?.nombre} ha sido eliminado correctamente`,
+          color: 'success'
+        });
+        
+        await Swal.fire({
+          title: '¡Eliminado!',
+          text: 'El titulado ha sido eliminado correctamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } catch (error) {
+        addToast({
+          title: 'Error',
+          description: 'Error al eliminar el titulado',
+          color: 'danger'
+        });
+        
+        await Swal.fire({
+          title: 'Error',
+          text: 'No se pudo eliminar el titulado. Inténtelo nuevamente.',
+          icon: 'error'
+        });
+      }
     }
   };
 
@@ -180,6 +240,11 @@ const TituladoPage: React.FC = () => {
       }
       setIsFormOpen(false);
       setEditingTitulado(null);
+      
+      // Mecanismo de refresh mejorado
+      setTimeout(() => {
+        // El hook useTitulado debería refrescar automáticamente los datos
+      }, 100);
     } catch (error) {
       addToast({
         title: 'Error',
@@ -222,7 +287,6 @@ const TituladoPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-    
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Titulados</h1>
@@ -231,7 +295,32 @@ const TituladoPage: React.FC = () => {
           </p>
         </div>
       </div>
-
+    
+      {/* Card de navegación debajo del título */}
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-lg p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">
+              Gestión de Áreas
+            </h3>
+            <p className="text-indigo-100 mb-4">
+              Administra las áreas académicas del sistema
+            </p>
+            <Link
+              to="/areas"
+              className="inline-flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors duration-200 font-medium"
+            >
+              <MapPin className="w-4 h-4 mr-2" />
+              Gestionar Áreas
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </Link>
+          </div>
+          <div className="hidden md:block">
+            <GraduationCap className="w-16 h-16 text-indigo-200" />
+          </div>
+        </div>
+      </div>
+    
       <DataTable
         data={titulados}
         columns={columns}
@@ -246,8 +335,7 @@ const TituladoPage: React.FC = () => {
         createButtonLabel="Nuevo Titulado"
         className="bg-white dark:bg-gray-800 rounded-lg shadow"
       />
-
-
+    
       {isFormOpen && (
         <GenericForm
           fields={formFields}

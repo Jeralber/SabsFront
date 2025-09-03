@@ -1,137 +1,156 @@
-import { useState, useEffect, useCallback } from 'react';
+// hooks/useMovimientos.ts
+import { useState, useCallback } from 'react';
 import { Movimiento } from '../types/movimiento.types';
-import { movimientoService, MovimientosPaginados } from '../services/movimientoService';
-
-
-interface UseMovimientoState {
-  movimientos: Movimiento[];
-  movimientosPaginados: MovimientosPaginados | null;
-  selectedMovimiento: Movimiento | null;
-  loading: boolean;
-  error: string | null;
-}
+import { MovimientoService } from '../services/movimientoService';
 
 export const useMovimiento = () => {
-  const [state, setState] = useState<UseMovimientoState>({
-    movimientos: [],
-    movimientosPaginados: null,
-    selectedMovimiento: null,
-    loading: false,
-    error: null
-  });
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
 
   const fetchMovimientos = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.getAll();
-      setState(prev => ({
-        ...prev,
-        movimientos: Array.isArray(response.data) ? response.data : [],
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Error al cargar movimientos'
-      }));
+      const res = await MovimientoService.getAll();
+      setMovimientos(res || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Error al cargar movimientos');
+      console.error('Error fetching movimientos:', err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
+  
+  const createMovimiento = useCallback(async (dto: {
+    personaSolicitaId: number;
+    sitioOrigenId: number; 
+    sitioDestinoId?: number | null;
+    detalles: { materialId: number; cantidad: number }[];
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await MovimientoService.create(dto);
+      setMovimientos(prev => [res, ...prev]);
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al crear movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
+  
+  const aprobarMovimiento = useCallback(async (id: number, aprobadoPorId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await MovimientoService.aprobar(id, aprobadoPorId);
+      setMovimientos(prev => prev.map(m => (m.id === id ? res : m)));
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al aprobar movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+ 
+  const rechazarMovimiento = useCallback(async (id: number, rechazadoPorId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await MovimientoService.rechazar(id, rechazadoPorId);
+      setMovimientos(prev => prev.map(m => (m.id === id ? res : m)));
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al rechazar movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const devolverMaterial = useCallback(async (movimientoOrigenId: number, dto: {
+    personaSolicitaId: number;
+    detalles: { materialId: number; cantidad: number }[];
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await MovimientoService.devolverMaterial(movimientoOrigenId, dto);
+      setMovimientos(prev => [res, ...prev]);
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al devolver material';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const fetchMovimientoById = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.getById(id);
-      setState(prev => ({
-        ...prev,
-        selectedMovimiento: response.data as Movimiento,
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : `Error al cargar movimiento con ID ${id}`
-      }));
+      const res = await MovimientoService.getById(id);
+      return res;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al cargar movimiento';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const createMovimiento = useCallback(async (movimiento: Partial<Movimiento>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  const fetchSaldoPendiente = useCallback(async (materialId: number) => {
     try {
-      const response = await movimientoService.create(movimiento);
-      setState(prev => ({
-        ...prev,
-        movimientos: [...prev.movimientos, response.data as Movimiento],
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al crear movimiento';
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
+      const res = await MovimientoService.getSaldoPendiente(materialId);
+      return res.saldoPendiente;
+    } catch (err: any) {
+      console.error('Error fetching saldo pendiente:', err);
+      return 0;
     }
   }, []);
 
-  const updateMovimiento = useCallback(async (id: number, movimiento: Partial<Movimiento>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  const getPrestamosActivos = useCallback(async (materialId: number) => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await movimientoService.update(id, movimiento);
-      const updatedMovimiento = response.data as Movimiento;
-      setState(prev => ({
-        ...prev,
-        movimientos: prev.movimientos.map(m => m.id === id ? updatedMovimiento : m),
-        selectedMovimiento: prev.selectedMovimiento?.id === id ? updatedMovimiento : prev.selectedMovimiento,
-        loading: false
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Error al actualizar movimiento con ID ${id}`;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage
-      }));
-      throw new Error(errorMessage);
+      const prestamos = await MovimientoService.getPrestamosActivos(materialId);
+      return prestamos;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al obtener préstamos activos';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
     }
   }, []);
-
-  const deleteMovimiento = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      await movimientoService.delete(id);
-      setState(prev => ({
-        ...prev,
-        movimientos: prev.movimientos.filter(m => m.id !== id),
-        selectedMovimiento: prev.selectedMovimiento?.id === id ? null : prev.selectedMovimiento,
-        loading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : `Error al eliminar movimiento con ID ${id}`
-      }));
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMovimientos();
-  }, [fetchMovimientos]);
 
   return {
-    ...state,
+    movimientos,
+    loading,
+    error,
     fetchMovimientos,
-   // filtrarMovimientos,
-    fetchMovimientoById,
     createMovimiento,
-    updateMovimiento,
-    deleteMovimiento
+    aprobarMovimiento,
+    rechazarMovimiento,
+    devolverMaterial,
+    fetchMovimientoById,
+    fetchSaldoPendiente,
+    getPrestamosActivos,
   };
 };
+
+export const useMovimientos = useMovimiento;

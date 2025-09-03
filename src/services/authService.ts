@@ -2,7 +2,8 @@
 import axios from "@/lib/axios";
 import { LoginDto, User } from "@/types/auth";
 
-const USER_KEY = "auth_user";
+// ❌ ELIMINAR completamente USER_KEY y localStorage
+// const USER_KEY = "auth_user";
 
 export const authService = {
   login: async (credentials: LoginDto): Promise<User> => {
@@ -49,13 +50,13 @@ export const authService = {
       
       console.log("Datos de usuario adaptados:", userData);
       
-      // Verificar que la estructura sea válida antes de guardarla
+      // Verificar que la estructura sea válida antes de retornarla
       if (!userData.usuario || !userData.usuario.nombre) {
         console.error("No se pudo adaptar la respuesta a la estructura esperada:", serverUserData);
         throw new Error("La respuesta del servidor no tiene la estructura esperada");
       }
       
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      // ❌ ELIMINAR: localStorage.setItem(USER_KEY, JSON.stringify(userData));
       return userData;
     } catch (error) {
       console.error("Error en login:", error);
@@ -64,47 +65,64 @@ export const authService = {
   },
 
   logout: async () => {
-    localStorage.removeItem(USER_KEY);
+    // ❌ ELIMINAR: localStorage.removeItem(USER_KEY);
 
     try {
       await axios.post("/auth/logout", {}, { withCredentials: true });
     } catch (error) {
       console.warn(
-        "Error en logout API, pero el usuario fue eliminado localmente",
-        error
+        "Error en logout API:", error
       );
     }
   },
 
+  // ✅ CORREGIR: Hacer petición real al backend
   me: async (): Promise<User> => {
-    const userData = localStorage.getItem(USER_KEY);
-
-    if (!userData) {
-      throw new Error("No hay usuario autenticado");
-    }
-
     try {
-      return JSON.parse(userData);
-    } catch (e) {
-      console.error('Error parsing user data', e);
-      localStorage.removeItem(USER_KEY);
-      throw new Error("Error al procesar datos del usuario");
+      const res = await axios.get("/auth/me", {
+        withCredentials: true, // ✅ Crucial para enviar cookies
+      });
+      
+      console.log("Respuesta de /auth/me:", res.data);
+      
+      // Adaptar la respuesta del servidor al formato User
+      let serverUserData = res.data.user || res.data;
+      
+      let userData: User = {
+        token: serverUserData.token || "",
+        usuario: {
+          id: serverUserData.id || 0,
+          nombre: serverUserData.nombre || "",
+          email: serverUserData.email || serverUserData.correo || "",
+          rol: serverUserData.rol || "",
+          permisos: serverUserData.permisos || []
+        }
+      };
+      
+      // Si el servidor ya devuelve la estructura correcta
+      if (serverUserData.usuario && serverUserData.usuario.nombre) {
+        userData = serverUserData;
+      }
+      else if (serverUserData.user && serverUserData.user.nombre) {
+        userData = {
+          token: serverUserData.token || "",
+          usuario: serverUserData.user
+        };
+      }
+      
+      return userData;
+    } catch (error) {
+      console.error("Error en me():", error);
+      throw new Error("No hay usuario autenticado");
     }
   },
 
+  // ❌ ELIMINAR funciones que usan localStorage
   getCurrentUser: (): User | null => {
-    const userStr = localStorage.getItem(USER_KEY);
-    if (!userStr) return null;
-    try {
-      return JSON.parse(userStr);
-    } catch (e) {
-      console.error('Error parsing user data', e);
-      localStorage.removeItem(USER_KEY);
-      return null;
-    }
+    return null; // Ya no necesitamos esto
   },
 
   isAuthenticated: (): boolean => {
-    return !!localStorage.getItem(USER_KEY);
+    return false; // Ya no necesitamos esto, AuthContext maneja el estado
   },
 };

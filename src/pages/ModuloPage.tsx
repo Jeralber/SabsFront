@@ -5,6 +5,7 @@ import { useModulo } from '../hooks/useModulo';
 import { Modulo } from '../types/modulo.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Database } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 
 type Column<T> = {
@@ -75,27 +76,34 @@ const ModuloPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     const modulo = modulos.find(m => m.id === id);
     if (!modulo) return;
-
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el módulo "${modulo.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
-
-    if (confirmed) {
-      try {
-        await deleteModulo(id);
-        addToast({
-          title: 'Módulo eliminado',
-          description: `El módulo "${modulo.nombre}" ha sido eliminado exitosamente.`,
-          color: 'success'
-        });
-      } catch (error) {
-        addToast({
-          title: 'Error al eliminar',
-          description: error instanceof Error ? error.message : 'Error desconocido al eliminar el módulo',
-          color: 'danger'
-        });
+  
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: `¿Está seguro de que desea eliminar el módulo "${modulo.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminarlo',
+      cancelButtonText: 'Cancelar'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await deleteModulo(id);
+          addToast({
+            title: 'Módulo eliminado',
+            description: `El módulo "${modulo.nombre}" ha sido eliminado exitosamente.`,
+            color: 'success'
+          });
+        } catch (error) {
+          addToast({
+            title: 'Error al eliminar',
+            description: error instanceof Error ? error.message : 'Error desconocido al eliminar el módulo',
+            color: 'danger'
+          });
+        }
       }
-    }
+    });
   };
 
 
