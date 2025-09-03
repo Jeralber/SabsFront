@@ -4,7 +4,7 @@ import { Button } from '@/components/atoms/Button';
 import { FaBellSlash } from 'react-icons/fa'; // Asumiendo que usas react-icons para un ícono
 
 const NotificacionesPage: React.FC = () => {
-  const { notifications, loading, error, markAsRead } = useNotification();
+  const { notifications, loading, error, markAsRead, isMarkingOne } = useNotification();
 
   if (loading) return <div>Cargando notificaciones...</div>;
   if (error) return <div>{error}</div>;
@@ -37,8 +37,12 @@ const NotificacionesPage: React.FC = () => {
             <p className="text-gray-600 mb-2">{notification.mensaje}</p>
             <p className="text-sm text-gray-500 mb-4">{notification.fecha}</p>
             {!notification.leida && (
-              <Button onClick={() => markAsRead(notification.id)} className="w-full">
-                Marcar como leída
+              <Button
+                onClick={() => markAsRead(notification.id)}
+                disabled={isMarkingOne === notification.id}
+                className="w-full"
+              >
+                {isMarkingOne === notification.id ? 'Marcando...' : 'Marcar como leída'}
               </Button>
             )}
           </div>

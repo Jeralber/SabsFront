@@ -77,7 +77,7 @@ function MovimientoPage() {
 
   const { tiposMovimiento, fetchTiposMovimiento } = useTipoMovimiento();
   const { personas, fetchPersonas } = usePersona();
-  const { materiales, fetchMyMaterials, fetchMaterialesPrestadosPendientes } =
+  const { materiales, fetchMyMaterials, } =
     useMaterial();
 
   const {
@@ -225,7 +225,6 @@ function MovimientoPage() {
         });
       }
 
-      // Si no hay sitio seleccionado, mantener comportamiento previo (stock activo en alguna parte)
       return materiales.filter((material) => {
         const esOriginal = material.esOriginal !== false;
         const activo = !!material.activo;
@@ -269,7 +268,6 @@ function MovimientoPage() {
         });
       }
 
-      // Si no hay sitio seleccionado, mantener comportamiento previo (stock activo en alguna parte)
       return materiales.filter((material) => {
         const esOriginal = material.esOriginal !== false;
         const activo = !!material.activo;

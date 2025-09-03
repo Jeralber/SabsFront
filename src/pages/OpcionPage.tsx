@@ -6,6 +6,7 @@ import { useModulo } from '../hooks/useModulo';
 import { Opcion } from '../types/opcion.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Link } from 'lucide-react';
+import  Swal  from 'sweetalert2';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -126,12 +127,19 @@ const OpcionPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     const opcion = opciones.find(o => o.id === id);
     if (!opcion) return;
-
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar la opción "${opcion.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
-
-    if (confirmed) {
+  
+    const result = await Swal.fire({
+      title: '¿Eliminar opción?',
+      text: `¿Está seguro de que desea eliminar la opción "${opcion.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+  
+    if (result.isConfirmed) {
       try {
         await deleteOpcion(id);
         addToast({

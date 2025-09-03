@@ -6,6 +6,7 @@ import { useOpcion } from '../hooks/useOpcion';
 import { Permiso } from '../types/permiso.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Key } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 
 type Column<T> = {
@@ -165,11 +166,18 @@ const PermisoPage: React.FC = () => {
     const permiso = permisos.find(p => p.id === id);
     if (!permiso) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el permiso "${permiso.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: `¿Deseas eliminar el permiso "${permiso.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deletePermiso(id);
         addToast({

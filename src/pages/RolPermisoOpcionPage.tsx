@@ -8,6 +8,7 @@ import { useOpcion } from '../hooks/useOpcion';
 import { RolPermisoOpcion } from '../types/rol-permiso-opcion.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Shield } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 type Column<T> = {
   accessorKey: keyof T;
@@ -143,12 +144,19 @@ const RolPermisoOpcionPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     const rolPermisoOpcion = rolPermisosOpciones.find(rpo => rpo.id === id);
     if (!rolPermisoOpcion) return;
-
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar esta asignación de rol-permiso-opción?\n\nEsta acción no se puede deshacer.`
-    );
-
-    if (confirmed) {
+  
+    const result = await Swal.fire({
+      title: '¿Eliminar asignación?',
+      text: '¿Está seguro de que desea eliminar esta asignación de rol-permiso-opción? Esta acción no se puede deshacer.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+  
+    if (result.isConfirmed) {
       try {
         await deleteRolPermisoOpcion(id);
         addToast({

@@ -5,6 +5,7 @@ import { useRol } from '../hooks/useRol';
 import { Rol } from '../types/rol.types';
 import { addToast } from '@heroui/react';
 import { Edit, Trash2, Users } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 
 type Column<T> = {
@@ -109,11 +110,18 @@ const RolPage: React.FC = () => {
     const rol = roles.find(r => r.id === id);
     if (!rol) return;
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea eliminar el rol "${rol.nombre}"?\n\nEsta acción no se puede deshacer.`
-    );
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: `¿Deseas eliminar el rol "${rol.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       try {
         await deleteRol(id);
         addToast({
